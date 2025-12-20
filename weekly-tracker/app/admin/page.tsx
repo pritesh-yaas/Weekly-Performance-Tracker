@@ -1,11 +1,14 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase' // <--- CHANGED THIS
+import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
 export default function AdminDashboard() {
-  const supabase = createClient() // <--- CHANGED THIS
+  const supabase = createClient()
   const router = useRouter()
+  // These are the lines that were missing:
+  const [reports, setReports] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -35,7 +38,7 @@ export default function AdminDashboard() {
   if (loading) return <div className="p-10">Loading Admin...</div>
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <div className="min-h-screen bg-gray-100 p-8 font-sans text-slate-800">
       <div className="flex justify-between items-center mb-6">
          <h1 className="text-2xl font-bold">Admin Dashboard</h1>
          <button onClick={() => router.push('/dashboard')} className="text-blue-600 underline">Go to Form</button>
@@ -61,15 +64,15 @@ export default function AdminDashboard() {
                 <td className="p-3">{r.profiles?.yaas_id}</td>
                 <td className="p-3">{r.hygiene_score}</td>
                 <td className="p-3">
-                  {r.report_items.map((i: any) => (
+                  {r.report_items && r.report_items.map((i: any) => (
                     <div key={i.id} className="mb-1 bg-blue-50 px-2 py-1 rounded text-xs inline-block mr-1">
                       {i.ip_name}
                     </div>
                   ))}
                 </td>
                 <td className="p-3">
-                  {r.report_items.reduce((acc: number, cur: any) => acc + cur.reels_delivered, 0)} / 
-                  {r.report_items.reduce((acc: number, cur: any) => acc + cur.approved_reels, 0)}
+                  {r.report_items ? r.report_items.reduce((acc: number, cur: any) => acc + (cur.reels_delivered || 0), 0) : 0} / 
+                  {r.report_items ? r.report_items.reduce((acc: number, cur: any) => acc + (cur.approved_reels || 0), 0) : 0}
                 </td>
               </tr>
             ))}
