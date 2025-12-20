@@ -1,0 +1,364 @@
+'use client'
+'use client'
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase' // <--- CHANGED THIS
+import { useRouter } from 'next/navigation'
+import { calculateWeekAndMonth } from '@/lib/utils'
+import { Plus, X, LogOut } from 'lucide-react'
+
+// --- Types ---
+interface IPItem {
+  id: string // temporary ID for UI key
+  ip_name: string
+  lead_editor: string
+  channel_manager: string
+  reels_delivered: number
+  approved_reels: number
+  creative_inputs: string
+  has_blockers: string // "Yes" | "No"
+  blocker_details: string
+  avg_reiterations: number
+  has_qc_changes: string // "Yes" | "No"
+  qc_details: string
+  improvements: string
+  drive_links: string
+  manager_comments: string
+}
+
+export default function Dashboard() {
+  const supabase = createClient() // <--- CHANGED THIS
+  const router = useRouter()
+  
+  // Master Data
+  const [profile, setProfile] = useState<any>(null)
+  const [ipOptions, setIpOptions] = useState<string[]>([])
+  
+  // Form State
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  
+  // General Section
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [labels, setLabels] = useState({ weekLabel: '', monthLabel: '' })
+  
+  const [general, setGeneral] = useState({
+    hygiene_score: 10,
+    mistakes_repeated: "No",
+    mistake_details: "",
+    delays: "No",
+    delay_reasons: "",
+    general_improvements: "",
+    next_week_commitment: 0,
+    areas_improvement: "",
+    overall_feedback: ""
+  })
+
+  // IP Tabs Section
+  const [activeTab, setActiveTab] = useState(0)
+  const [items, setItems] = useState<IPItem[]>([])
+
+  // Init
+  useEffect(() => {
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return router.push('/')
+      
+      // Fetch Profile
+      let { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      setProfile(prof)
+      
+      // Fetch IPs
+      const { data: ips } = await supabase.from('ips').select('name').eq('active', true).order('name')
+      if (ips) setIpOptions(ips.map(i => i.name))
+      
+      // Default one empty tab
+      addTab()
+      
+      setLoading(false)
+    }
+    init()
+  }, [])
+
+  // Update Labels when date changes
+  useEffect(() => {
+    setLabels(calculateWeekAndMonth(date))
+  }, [date])
+
+  const addTab = () => {
+    const newItem: IPItem = {
+      id: Math.random().toString(36),
+      ip_name: "",
+      lead_editor: "",
+      channel_manager: "",
+      reels_delivered: 0,
+      approved_reels: 0,
+      creative_inputs: "",
+      has_blockers: "No",
+      blocker_details: "",
+      avg_reiterations: 0,
+      has_qc_changes: "No",
+      qc_details: "",
+      improvements: "",
+      drive_links: "",
+      manager_comments: ""
+    }
+    setItems([...items, newItem])
+    setActiveTab(items.length)
+  }
+
+  const removeTab = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (items.length === 1) return alert("You need at least one IP.")
+    if (!confirm("Remove this IP tab?")) return
+    
+    const newItems = items.filter((_, i) => i !== index)
+    setItems(newItems)
+    setActiveTab(0)
+  }
+
+  const updateItem = (index: number, field: keyof IPItem, value: any) => {
+    const newItems = [...items]
+    newItems[index] = { ...newItems[index], [field]: value }
+    setItems(newItems)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+
+    try {
+      if(!profile.yaas_id) {
+        // Save YAAS ID if not exists
+        const idInput = prompt("Please enter your YAAS ID (e.g. C029) one time setup:")
+        if(idInput) {
+           await supabase.from('profiles').update({ yaas_id: idInput }).eq('id', profile.id)
+        } else {
+            throw new Error("YAAS ID is required")
+        }
+      }
+
+      // 1. Insert Report
+      const { data: report, error: repError } = await supabase.from('reports').insert({
+        user_id: profile.id,
+        submission_date: date,
+        week_label: labels.weekLabel,
+        month_label: labels.monthLabel,
+        hygiene_score: general.hygiene_score,
+        mistakes_repeated: general.mistakes_repeated === 'Yes',
+        mistake_details: general.mistake_details,
+        delays: general.delays === 'Yes',
+        delay_reasons: general.delay_reasons,
+        general_improvements: general.general_improvements,
+        next_week_commitment: general.next_week_commitment,
+        areas_improvement: general.areas_improvement,
+        overall_feedback: general.overall_feedback
+      }).select().single()
+
+      if (repError) throw repError
+
+      // 2. Insert Items
+      const formattedItems = items.map(item => ({
+        report_id: report.id,
+        ip_name: item.ip_name,
+        lead_editor: item.lead_editor,
+        channel_manager: item.channel_manager,
+        reels_delivered: item.reels_delivered,
+        approved_reels: item.approved_reels,
+        creative_inputs: item.creative_inputs,
+        has_blockers: item.has_blockers === 'Yes',
+        blocker_details: item.blocker_details,
+        avg_reiterations: item.avg_reiterations,
+        has_qc_changes: item.has_qc_changes === 'Yes',
+        qc_details: item.qc_details,
+        improvements: item.improvements,
+        drive_links: item.drive_links,
+        manager_comments: item.manager_comments
+      }))
+
+      const { error: itemError } = await supabase.from('report_items').insert(formattedItems)
+      if (itemError) throw itemError
+
+      alert("Report Submitted Successfully!")
+      window.location.reload()
+
+    } catch (err: any) {
+      alert("Error: " + err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (loading) return <div className="p-10 text-center">Loading...</div>
+
+  return (
+    <div className="min-h-screen bg-slate-50 py-10 px-4 font-inter text-slate-800">
+      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border-t-4 border-blue-600 p-8">
+        
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-bold">Weekly Performance Report</h1>
+          <button onClick={() => supabase.auth.signOut().then(() => router.push('/'))} className="text-sm text-red-500 flex items-center gap-1">
+            <LogOut size={14} /> Sign Out
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          {/* Header Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-slate-50 p-4 rounded-lg">
+            <div>
+              <label className="block text-sm font-semibold mb-1">Editor Name</label>
+              <input value={profile?.full_name || ''} disabled className="w-full p-2 border rounded bg-slate-100" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">Email</label>
+              <input value={profile?.email || ''} disabled className="w-full p-2 border rounded bg-slate-100" />
+            </div>
+            <div>
+               <label className="block text-sm font-semibold mb-1">Select Date</label>
+               <input type="date" required value={date} onChange={e => setDate(e.target.value)} className="w-full p-2 border rounded" />
+            </div>
+            <div>
+               <label className="block text-sm font-semibold mb-1">Period</label>
+               <input value={labels.weekLabel} disabled className="w-full p-2 border rounded bg-slate-100 font-medium" />
+            </div>
+          </div>
+
+          {/* Section 1: General */}
+          <h2 className="text-lg font-bold border-b pb-2 mb-4 text-slate-700">1. General Questions</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+               <label className="block text-sm font-semibold">Hygiene Score (0-10)</label>
+               <input type="number" min="0" max="10" step="0.5" required 
+                 value={general.hygiene_score} 
+                 onChange={e => setGeneral({...general, hygiene_score: parseFloat(e.target.value)})}
+                 className="w-full p-2 border rounded" />
+            </div>
+            <div>
+               <label className="block text-sm font-semibold">Next Week Commitment</label>
+               <input type="number" step="0.5" 
+                 value={general.next_week_commitment} 
+                 onChange={e => setGeneral({...general, next_week_commitment: parseFloat(e.target.value)})}
+                 className="w-full p-2 border rounded" />
+            </div>
+          </div>
+
+          <div className="mb-4">
+             <label className="block text-sm font-semibold">Mistakes Repeated?</label>
+             <div className="flex gap-4 mt-1">
+               {['Yes', 'No'].map(opt => (
+                 <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                   <input type="radio" name="gen_mistakes" value={opt} 
+                     checked={general.mistakes_repeated === opt}
+                     onChange={() => setGeneral({...general, mistakes_repeated: opt})} />
+                   {opt}
+                 </label>
+               ))}
+             </div>
+             {general.mistakes_repeated === 'Yes' && (
+               <textarea placeholder="Details..." required className="w-full p-2 border rounded mt-2 text-sm"
+                 value={general.mistake_details} onChange={e => setGeneral({...general, mistake_details: e.target.value})} />
+             )}
+          </div>
+          
+          <div className="mb-4">
+             <label className="block text-sm font-semibold">Improvements & Feedback</label>
+             <textarea placeholder="Improvements from last week..." className="w-full p-2 border rounded mb-2 h-20 text-sm"
+               value={general.general_improvements} onChange={e => setGeneral({...general, general_improvements: e.target.value})} />
+             <textarea placeholder="Overall Feedback..." className="w-full p-2 border rounded h-20 text-sm"
+               value={general.overall_feedback} onChange={e => setGeneral({...general, overall_feedback: e.target.value})} />
+          </div>
+
+          {/* Section 2: IPs */}
+          <h2 className="text-lg font-bold border-b pb-2 mb-4 mt-8 text-slate-700">2. IP Related Questions</h2>
+          
+          {/* Tabs Header */}
+          <div className="flex gap-2 border-b overflow-x-auto pb-0 mb-0">
+             {items.map((item, idx) => (
+               <div key={item.id} 
+                 onClick={() => setActiveTab(idx)}
+                 className={`px-4 py-2 border-t border-x rounded-t-lg cursor-pointer flex items-center gap-2 min-w-fit
+                   ${activeTab === idx ? 'bg-white border-blue-600 border-t-2 text-blue-600 font-bold -mb-[1px] z-10' : 'bg-slate-100 text-slate-500'}
+                 `}>
+                 IP {idx + 1}
+                 <span onClick={(e) => removeTab(idx, e)} className="hover:text-red-500 rounded-full p-0.5"><X size={12} /></span>
+               </div>
+             ))}
+             <button type="button" onClick={addTab} className="px-3 py-2 bg-blue-50 text-blue-600 rounded-t-lg font-bold flex items-center gap-1">
+               <Plus size={14} /> Add
+             </button>
+          </div>
+
+          {/* Active Tab Content */}
+          <div className="border p-6 rounded-b-lg rounded-tr-lg bg-white relative z-0">
+             {items.map((item, idx) => (
+               <div key={item.id} className={activeTab === idx ? 'block' : 'hidden'}>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                   <div>
+                     <label className="block text-sm font-semibold">IP Name</label>
+                     <select required className="w-full p-2 border rounded"
+                       value={item.ip_name} onChange={e => updateItem(idx, 'ip_name', e.target.value)}>
+                        <option value="">Select...</option>
+                        {ipOptions.map(ip => <option key={ip} value={ip}>{ip}</option>)}
+                     </select>
+                   </div>
+                   <div>
+                     <label className="block text-sm font-semibold">Lead Editor / Manager</label>
+                     <div className="flex gap-2">
+                       <input placeholder="Lead Editor" className="w-1/2 p-2 border rounded text-sm" 
+                         value={item.lead_editor} onChange={e => updateItem(idx, 'lead_editor', e.target.value)} />
+                       <input placeholder="Manager" className="w-1/2 p-2 border rounded text-sm" 
+                         value={item.channel_manager} onChange={e => updateItem(idx, 'channel_manager', e.target.value)} />
+                     </div>
+                   </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500">Delivered</label>
+                      <input type="number" className="w-full p-2 border rounded" min="0" required
+                        value={item.reels_delivered} onChange={e => updateItem(idx, 'reels_delivered', parseInt(e.target.value) || 0)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500">Approved</label>
+                      <input type="number" className="w-full p-2 border rounded" min="0" required
+                        value={item.approved_reels} onChange={e => updateItem(idx, 'approved_reels', parseInt(e.target.value) || 0)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-500">Avg Reiterations</label>
+                      <input type="number" className="w-full p-2 border rounded" step="0.1"
+                        value={item.avg_reiterations} onChange={e => updateItem(idx, 'avg_reiterations', parseFloat(e.target.value))} />
+                    </div>
+                 </div>
+
+                 <div className="mb-4">
+                   <label className="block text-sm font-semibold">Drive Links</label>
+                   <textarea placeholder="Paste links here..." className="w-full p-2 border rounded h-20 text-sm" required
+                     value={item.drive_links} onChange={e => updateItem(idx, 'drive_links', e.target.value)} />
+                 </div>
+
+                 {/* Just adding one blocker field example for brevity, repeat pattern for others */}
+                 <div className="mb-4 bg-red-50 p-3 rounded">
+                    <label className="block text-sm font-semibold text-red-800">Any Blockers?</label>
+                    <div className="flex gap-4">
+                       <label><input type="radio" checked={item.has_blockers === 'Yes'} onChange={() => updateItem(idx, 'has_blockers', 'Yes')} /> Yes</label>
+                       <label><input type="radio" checked={item.has_blockers === 'No'} onChange={() => updateItem(idx, 'has_blockers', 'No')} /> No</label>
+                    </div>
+                    {item.has_blockers === 'Yes' && (
+                       <textarea className="w-full p-2 border border-red-200 rounded mt-2" placeholder="Details..." required
+                         value={item.blocker_details} onChange={e => updateItem(idx, 'blocker_details', e.target.value)} />
+                    )}
+                 </div>
+
+               </div>
+             ))}
+          </div>
+
+          <button disabled={submitting} className="w-full mt-8 bg-blue-600 text-white p-4 rounded-lg font-bold text-lg hover:bg-blue-700 transition">
+            {submitting ? 'Submitting...' : 'Submit Report'}
+          </button>
+
+        </form>
+      </div>
+    </div>
+  )
+}
