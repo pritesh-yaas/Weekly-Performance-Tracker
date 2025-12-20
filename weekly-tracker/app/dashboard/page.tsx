@@ -57,23 +57,45 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState(0)
   const [items, setItems] = useState<IPItem[]>([])
 
-  // Init
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return router.push('/')
       
-      // Fetch Profile
+      // 1. Check if Profile exists
       let { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      
+      // 2. If Profile exists but has no YAAS ID, try to find it in the Registry
+      if (prof && !prof.yaas_id) {
+        const { data: registryData } = await supabase
+          .from('editor_registry')
+          .select('*')
+          .eq('email', user.email || '') // Match by email
+          .single()
+          
+        if (registryData) {
+          // Found in registry! Auto-update profile
+          const { data: updatedProf } = await supabase
+            .from('profiles')
+            .update({ 
+              yaas_id: registryData.yaas_id,
+              full_name: registryData.name // Use the official name from registry
+            })
+            .eq('id', user.id)
+            .select()
+            .single()
+            
+          prof = updatedProf
+        }
+      }
+
       setProfile(prof)
       
       // Fetch IPs
       const { data: ips } = await supabase.from('ips').select('name').eq('active', true).order('name')
       if (ips) setIpOptions(ips.map(i => i.name))
       
-      // Default one empty tab
       addTab()
-      
       setLoading(false)
     }
     init()
@@ -126,16 +148,16 @@ export default function Dashboard() {
     e.preventDefault()
     setSubmitting(true)
 
-    try {
-      if(!profile.yaas_id) {
-        // Save YAAS ID if not exists
-        const idInput = prompt("Please enter your YAAS ID (e.g. C029) one time setup:")
-        if(idInput) {
-           await supabase.from('profiles').update({ yaas_id: idInput }).eq('id', profile.id)
-        } else {
-            throw new Error("YAAS ID is required")
-        }
-      }
+    // try {
+    //   if(!profile.yaas_id) {
+    //     // Save YAAS ID if not exists
+    //     const idInput = prompt("Please enter your YAAS ID (e.g. C029) one time setup:")
+    //     if(idInput) {
+    //        await supabase.from('profiles').update({ yaas_id: idInput }).eq('id', profile.id)
+    //     } else {
+    //         throw new Error("YAAS ID is required")
+    //     }
+    //   }
 
       // 1. Insert Report
       const { data: report, error: repError } = await supabase.from('reports').insert({
