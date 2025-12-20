@@ -140,6 +140,16 @@ export default function Dashboard() {
 
   const updateItem = (index: number, field: keyof IPItem, value: any) => {
     const newItems = [...items]
+    
+    // Logic: Prevent Approved > Delivered
+    if (field === 'approved_reels') {
+      const delivered = newItems[index].reels_delivered || 0
+      if (value > delivered) {
+        alert("Approved reels cannot be higher than Delivered reels")
+        return // Stop the update
+      }
+    }
+
     newItems[index] = { ...newItems[index], [field]: value }
     setItems(newItems)
   }
