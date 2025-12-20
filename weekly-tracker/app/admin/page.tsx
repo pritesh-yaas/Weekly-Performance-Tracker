@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 export default function AdminDashboard() {
   const supabase = createClient()
   const router = useRouter()
-  // These are the lines that were missing:
   const [reports, setReports] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -19,14 +18,10 @@ export default function AdminDashboard() {
       const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
       if (profile?.role !== 'admin') return router.push('/dashboard')
 
-      // Get Data (Joined)
+      // Get Data from Single Table
       const { data, error } = await supabase
         .from('reports')
-        .select(`
-          *,
-          profiles(full_name, email, yaas_id),
-          report_items(*)
-        `)
+        .select('*')
         .order('submission_date', { ascending: false })
       
       if(data) setReports(data)
@@ -45,37 +40,46 @@ export default function AdminDashboard() {
       </div>
       
       <div className="bg-white rounded shadow overflow-x-auto">
-        <table className="min-w-full text-sm text-left">
+        <table className="min-w-full text-sm text-left border-collapse">
           <thead className="bg-gray-50 text-gray-700 font-bold border-b">
             <tr>
-              <th className="p-3">Date</th>
-              <th className="p-3">Editor</th>
-              <th className="p-3">ID</th>
-              <th className="p-3">Hygiene</th>
-              <th className="p-3">IPs Worked On</th>
-              <th className="p-3">Reels (Del/App)</th>
+              <th className="p-3 border">Date</th>
+              <th className="p-3 border">YAAS ID</th>
+              <th className="p-3 border">Editor</th>
+              <th className="p-3 border">Email</th>
+              <th className="p-3 border">Hygiene</th>
+              <th className="p-3 border">IPs Summary</th>
             </tr>
           </thead>
           <tbody>
-            {reports.map((r) => (
-              <tr key={r.id} className="border-b hover:bg-gray-50">
-                <td className="p-3">{r.submission_date}</td>
-                <td className="p-3">{r.profiles?.full_name}</td>
-                <td className="p-3">{r.profiles?.yaas_id}</td>
-                <td className="p-3">{r.hygiene_score}</td>
-                <td className="p-3">
-                  {r.report_items && r.report_items.map((i: any) => (
-                    <div key={i.id} className="mb-1 bg-blue-50 px-2 py-1 rounded text-xs inline-block mr-1">
-                      {i.ip_name}
+            {reports.map((r) => {
+              // Calculate totals from JSON Data
+              const ips = r.ip_data || []
+              const totalDelivered = ips.reduce((acc: number, i: any) => acc + (i.reels_delivered || 0), 0)
+              const totalApproved = ips.reduce((acc: number, i: any) => acc + (i.approved_reels || 0), 0)
+
+              return (
+                <tr key={r.id} className="border-b hover:bg-gray-50">
+                  <td className="p-3 border">{r.submission_date}</td>
+                  <td className="p-3 border font-mono text-xs">{r.yaas_id}</td>
+                  <td className="p-3 border">{r.editor_name}</td>
+                  <td className="p-3 border text-xs text-gray-500">{r.editor_email}</td>
+                  <td className="p-3 border">{r.hygiene_score}</td>
+                  <td className="p-3 border">
+                    <div className="flex flex-wrap gap-1 mb-1">
+                      {ips.map((i: any, idx: number) => (
+                        <span key={idx} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
+                          {i.ip_name}
+                        </span>
+                      ))}
                     </div>
-                  ))}
-                </td>
-                <td className="p-3">
-                  {r.report_items ? r.report_items.reduce((acc: number, cur: any) => acc + (cur.reels_delivered || 0), 0) : 0} / 
-                  {r.report_items ? r.report_items.reduce((acc: number, cur: any) => acc + (cur.approved_reels || 0), 0) : 0}
-                </td>
-              </tr>
-            ))}
+                    <div className="text-xs text-gray-600">
+                      <strong>Total:</strong> {totalDelivered} Delivered / {totalApproved} Approved
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

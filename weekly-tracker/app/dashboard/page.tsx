@@ -1,24 +1,22 @@
 'use client'
-'use client'
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase' // <--- CHANGED THIS
+import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { calculateWeekAndMonth } from '@/lib/utils'
 import { Plus, X, LogOut } from 'lucide-react'
 
-// --- Types ---
 interface IPItem {
-  id: string // temporary ID for UI key
+  id: string
   ip_name: string
   lead_editor: string
   channel_manager: string
   reels_delivered: number
   approved_reels: number
   creative_inputs: string
-  has_blockers: string // "Yes" | "No"
+  has_blockers: string
   blocker_details: string
   avg_reiterations: number
-  has_qc_changes: string // "Yes" | "No"
+  has_qc_changes: string
   qc_details: string
   improvements: string
   drive_links: string
@@ -26,21 +24,24 @@ interface IPItem {
 }
 
 export default function Dashboard() {
-  const supabase = createClient() // <--- CHANGED THIS
+  const supabase = createClient()
   const router = useRouter()
   
-  // Master Data
-  const [profile, setProfile] = useState<any>(null)
-  const [ipOptions, setIpOptions] = useState<string[]>([])
-  
-  // Form State
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [ipOptions, setIpOptions] = useState<string[]>([])
   
-  // General Section
+  // User Data
+  const [user, setUser] = useState<any>(null)
+  const [editorInfo, setEditorInfo] = useState({
+    name: '',
+    email: '',
+    yaas_id: ''
+  })
+
+  // General Data
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [labels, setLabels] = useState({ weekLabel: '', monthLabel: '' })
-  
   const [general, setGeneral] = useState({
     hygiene_score: 10,
     mistakes_repeated: "No",
@@ -53,45 +54,39 @@ export default function Dashboard() {
     overall_feedback: ""
   })
 
-  // IP Tabs Section
+  // IP Tabs
   const [activeTab, setActiveTab] = useState(0)
   const [items, setItems] = useState<IPItem[]>([])
 
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return router.push('/')
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser) return router.push('/')
+      setUser(authUser)
+
+      // 1. Fetch Profile & Registry Logic
+      let { data: prof } = await supabase.from('profiles').select('*').eq('id', authUser.id).single()
       
-      // 1. Check if Profile exists
-      let { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      
-      // 2. If Profile exists but has no YAAS ID, try to find it in the Registry
+      // Check Registry if YAAS ID missing
       if (prof && !prof.yaas_id) {
         const { data: registryData } = await supabase
-          .from('editor_registry')
-          .select('*')
-          .eq('email', user.email || '') // Match by email
-          .single()
-          
+          .from('editor_registry').select('*').eq('email', authUser.email || '').single()
+        
         if (registryData) {
-          // Found in registry! Auto-update profile
-          const { data: updatedProf } = await supabase
-            .from('profiles')
-            .update({ 
-              yaas_id: registryData.yaas_id,
-              full_name: registryData.name // Use the official name from registry
-            })
-            .eq('id', user.id)
-            .select()
-            .single()
-            
-          prof = updatedProf
+          const { data: updated } = await supabase
+            .from('profiles').update({ yaas_id: registryData.yaas_id, full_name: registryData.name })
+            .eq('id', authUser.id).select().single()
+          prof = updated
         }
       }
 
-      setProfile(prof)
+      setEditorInfo({
+        name: prof?.full_name || '',
+        email: authUser.email || '',
+        yaas_id: prof?.yaas_id || ''
+      })
       
-      // Fetch IPs
+      // 2. Fetch IPs
       const { data: ips } = await supabase.from('ips').select('name').eq('active', true).order('name')
       if (ips) setIpOptions(ips.map(i => i.name))
       
@@ -101,55 +96,37 @@ export default function Dashboard() {
     init()
   }, [])
 
-  // Update Labels when date changes
   useEffect(() => {
     setLabels(calculateWeekAndMonth(date))
   }, [date])
 
   const addTab = () => {
-    const newItem: IPItem = {
+    setItems([...items, {
       id: Math.random().toString(36),
-      ip_name: "",
-      lead_editor: "",
-      channel_manager: "",
-      reels_delivered: 0,
-      approved_reels: 0,
-      creative_inputs: "",
-      has_blockers: "No",
-      blocker_details: "",
-      avg_reiterations: 0,
-      has_qc_changes: "No",
-      qc_details: "",
-      improvements: "",
-      drive_links: "",
-      manager_comments: ""
-    }
-    setItems([...items, newItem])
+      ip_name: "", lead_editor: "", channel_manager: "",
+      reels_delivered: 0, approved_reels: 0, creative_inputs: "",
+      has_blockers: "No", blocker_details: "", avg_reiterations: 0,
+      has_qc_changes: "No", qc_details: "", improvements: "",
+      drive_links: "", manager_comments: ""
+    }])
     setActiveTab(items.length)
   }
 
   const removeTab = (index: number, e: React.MouseEvent) => {
     e.stopPropagation()
     if (items.length === 1) return alert("You need at least one IP.")
-    if (!confirm("Remove this IP tab?")) return
-    
-    const newItems = items.filter((_, i) => i !== index)
-    setItems(newItems)
-    setActiveTab(0)
+    if (confirm("Remove this IP tab?")) {
+      setItems(items.filter((_, i) => i !== index))
+      setActiveTab(0)
+    }
   }
 
   const updateItem = (index: number, field: keyof IPItem, value: any) => {
     const newItems = [...items]
-    
-    // Logic: Prevent Approved > Delivered
     if (field === 'approved_reels') {
       const delivered = newItems[index].reels_delivered || 0
-      if (value > delivered) {
-        alert("Approved reels cannot be higher than Delivered reels")
-        return // Stop the update
-      }
+      if (value > delivered) return alert("Approved reels cannot be higher than Delivered reels")
     }
-
     newItems[index] = { ...newItems[index], [field]: value }
     setItems(newItems)
   }
@@ -158,23 +135,20 @@ export default function Dashboard() {
     e.preventDefault()
     setSubmitting(true)
 
-    // try {
-    //   if(!profile.yaas_id) {
-    //     // Save YAAS ID if not exists
-    //     const idInput = prompt("Please enter your YAAS ID (e.g. C029) one time setup:")
-    //     if(idInput) {
-    //        await supabase.from('profiles').update({ yaas_id: idInput }).eq('id', profile.id)
-    //     } else {
-    //         throw new Error("YAAS ID is required")
-    //     }
-    //   }
+    try {
+      if(!editorInfo.yaas_id) throw new Error("YAAS ID is missing. Contact Admin.")
 
-      // 1. Insert Report
-      const { data: report, error: repError } = await supabase.from('reports').insert({
-        user_id: profile.id,
+      const { error } = await supabase.from('reports').insert({
+        user_id: user.id,
+        // Storing Editor Details Directly
+        editor_name: editorInfo.name,
+        editor_email: editorInfo.email,
+        yaas_id: editorInfo.yaas_id,
+        
         submission_date: date,
         week_label: labels.weekLabel,
         month_label: labels.monthLabel,
+        
         hygiene_score: general.hygiene_score,
         mistakes_repeated: general.mistakes_repeated === 'Yes',
         mistake_details: general.mistake_details,
@@ -183,32 +157,13 @@ export default function Dashboard() {
         general_improvements: general.general_improvements,
         next_week_commitment: general.next_week_commitment,
         areas_improvement: general.areas_improvement,
-        overall_feedback: general.overall_feedback
-      }).select().single()
+        overall_feedback: general.overall_feedback,
+        
+        // Storing IPs as JSON
+        ip_data: items
+      })
 
-      if (repError) throw repError
-
-      // 2. Insert Items
-      const formattedItems = items.map(item => ({
-        report_id: report.id,
-        ip_name: item.ip_name,
-        lead_editor: item.lead_editor,
-        channel_manager: item.channel_manager,
-        reels_delivered: item.reels_delivered,
-        approved_reels: item.approved_reels,
-        creative_inputs: item.creative_inputs,
-        has_blockers: item.has_blockers === 'Yes',
-        blocker_details: item.blocker_details,
-        avg_reiterations: item.avg_reiterations,
-        has_qc_changes: item.has_qc_changes === 'Yes',
-        qc_details: item.qc_details,
-        improvements: item.improvements,
-        drive_links: item.drive_links,
-        manager_comments: item.manager_comments
-      }))
-
-      const { error: itemError } = await supabase.from('report_items').insert(formattedItems)
-      if (itemError) throw itemError
+      if (error) throw error
 
       alert("Report Submitted Successfully!")
       window.location.reload()
@@ -223,7 +178,7 @@ export default function Dashboard() {
   if (loading) return <div className="p-10 text-center">Loading...</div>
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4 font-inter text-slate-800">
+    <div className="min-h-screen bg-slate-50 py-10 px-4 font-sans text-slate-800">
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border-t-4 border-blue-600 p-8">
         
         <div className="flex justify-between items-center mb-8">
@@ -238,25 +193,28 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-slate-50 p-4 rounded-lg">
             <div>
               <label className="block text-sm font-semibold mb-1">Editor Name</label>
-              <input value={profile?.full_name || ''} disabled className="w-full p-2 border rounded bg-slate-100" />
+              <input value={editorInfo.name} disabled className="w-full p-2 border rounded bg-slate-200" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">YAAS ID</label>
+              <input value={editorInfo.yaas_id} disabled className="w-full p-2 border rounded bg-slate-200 font-bold text-blue-800" />
             </div>
             <div>
               <label className="block text-sm font-semibold mb-1">Email</label>
-              <input value={profile?.email || ''} disabled className="w-full p-2 border rounded bg-slate-100" />
+              <input value={editorInfo.email} disabled className="w-full p-2 border rounded bg-slate-200" />
             </div>
             <div>
                <label className="block text-sm font-semibold mb-1">Select Date</label>
                <input type="date" required value={date} onChange={e => setDate(e.target.value)} className="w-full p-2 border rounded" />
             </div>
-            <div>
+            <div className="md:col-span-2">
                <label className="block text-sm font-semibold mb-1">Period</label>
-               <input value={labels.weekLabel} disabled className="w-full p-2 border rounded bg-slate-100 font-medium" />
+               <input value={labels.weekLabel} disabled className="w-full p-2 border rounded bg-slate-200 font-medium" />
             </div>
           </div>
 
           {/* Section 1: General */}
           <h2 className="text-lg font-bold border-b pb-2 mb-4 text-slate-700">1. General Questions</h2>
-          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
                <label className="block text-sm font-semibold">Hygiene Score (0-10)</label>
@@ -273,7 +231,7 @@ export default function Dashboard() {
                  className="w-full p-2 border rounded" />
             </div>
           </div>
-
+          
           <div className="mb-4">
              <label className="block text-sm font-semibold">Mistakes Repeated?</label>
              <div className="flex gap-4 mt-1">
@@ -291,23 +249,40 @@ export default function Dashboard() {
                  value={general.mistake_details} onChange={e => setGeneral({...general, mistake_details: e.target.value})} />
              )}
           </div>
-          
+
+          <div className="mb-4">
+             <label className="block text-sm font-semibold">Any Delays?</label>
+             <div className="flex gap-4 mt-1">
+               {['Yes', 'No'].map(opt => (
+                 <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                   <input type="radio" name="gen_delays" value={opt} 
+                     checked={general.delays === opt}
+                     onChange={() => setGeneral({...general, delays: opt})} />
+                   {opt}
+                 </label>
+               ))}
+             </div>
+             {general.delays === 'Yes' && (
+               <textarea placeholder="Reason for delays..." required className="w-full p-2 border rounded mt-2 text-sm"
+                 value={general.delay_reasons} onChange={e => setGeneral({...general, delay_reasons: e.target.value})} />
+             )}
+          </div>
+
           <div className="mb-4">
              <label className="block text-sm font-semibold">Improvements & Feedback</label>
              <textarea placeholder="Improvements from last week..." className="w-full p-2 border rounded mb-2 h-20 text-sm"
                value={general.general_improvements} onChange={e => setGeneral({...general, general_improvements: e.target.value})} />
+             <textarea placeholder="Areas for Improvement..." className="w-full p-2 border rounded mb-2 h-20 text-sm"
+               value={general.areas_improvement} onChange={e => setGeneral({...general, areas_improvement: e.target.value})} />
              <textarea placeholder="Overall Feedback..." className="w-full p-2 border rounded h-20 text-sm"
                value={general.overall_feedback} onChange={e => setGeneral({...general, overall_feedback: e.target.value})} />
           </div>
 
           {/* Section 2: IPs */}
           <h2 className="text-lg font-bold border-b pb-2 mb-4 mt-8 text-slate-700">2. IP Related Questions</h2>
-          
-          {/* Tabs Header */}
           <div className="flex gap-2 border-b overflow-x-auto pb-0 mb-0">
              {items.map((item, idx) => (
-               <div key={item.id} 
-                 onClick={() => setActiveTab(idx)}
+               <div key={item.id} onClick={() => setActiveTab(idx)}
                  className={`px-4 py-2 border-t border-x rounded-t-lg cursor-pointer flex items-center gap-2 min-w-fit
                    ${activeTab === idx ? 'bg-white border-blue-600 border-t-2 text-blue-600 font-bold -mb-[1px] z-10' : 'bg-slate-100 text-slate-500'}
                  `}>
@@ -320,7 +295,6 @@ export default function Dashboard() {
              </button>
           </div>
 
-          {/* Active Tab Content */}
           <div className="border p-6 rounded-b-lg rounded-tr-lg bg-white relative z-0">
              {items.map((item, idx) => (
                <div key={item.id} className={activeTab === idx ? 'block' : 'hidden'}>
@@ -334,7 +308,7 @@ export default function Dashboard() {
                      </select>
                    </div>
                    <div>
-                     <label className="block text-sm font-semibold">Lead Editor / Manager</label>
+                     <label className="block text-sm font-semibold">Lead / Manager</label>
                      <div className="flex gap-2">
                        <input placeholder="Lead Editor" className="w-1/2 p-2 border rounded text-sm" 
                          value={item.lead_editor} onChange={e => updateItem(idx, 'lead_editor', e.target.value)} />
@@ -343,7 +317,6 @@ export default function Dashboard() {
                      </div>
                    </div>
                  </div>
-
                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <div>
                       <label className="block text-xs font-semibold text-slate-500">Delivered</label>
@@ -361,14 +334,11 @@ export default function Dashboard() {
                         value={item.avg_reiterations} onChange={e => updateItem(idx, 'avg_reiterations', parseFloat(e.target.value))} />
                     </div>
                  </div>
-
                  <div className="mb-4">
                    <label className="block text-sm font-semibold">Drive Links</label>
                    <textarea placeholder="Paste links here..." className="w-full p-2 border rounded h-20 text-sm" required
                      value={item.drive_links} onChange={e => updateItem(idx, 'drive_links', e.target.value)} />
                  </div>
-
-                 {/* Just adding one blocker field example for brevity, repeat pattern for others */}
                  <div className="mb-4 bg-red-50 p-3 rounded">
                     <label className="block text-sm font-semibold text-red-800">Any Blockers?</label>
                     <div className="flex gap-4">
@@ -380,7 +350,6 @@ export default function Dashboard() {
                          value={item.blocker_details} onChange={e => updateItem(idx, 'blocker_details', e.target.value)} />
                     )}
                  </div>
-
                </div>
              ))}
           </div>
@@ -388,7 +357,6 @@ export default function Dashboard() {
           <button disabled={submitting} className="w-full mt-8 bg-blue-600 text-white p-4 rounded-lg font-bold text-lg hover:bg-blue-700 transition">
             {submitting ? 'Submitting...' : 'Submit Report'}
           </button>
-
         </form>
       </div>
     </div>
