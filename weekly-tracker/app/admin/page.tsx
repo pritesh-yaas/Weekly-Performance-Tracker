@@ -1,12 +1,12 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { calculateWeekAndMonth } from '@/lib/utils'
 import { 
   Calendar, Search, LayoutList, Table2, 
   CheckCircle, XCircle, Filter, ArrowUpDown, 
-  X, Clock, ChevronRight, FileText, ExternalLink 
+  X, Clock, ChevronRight, ArrowUp, ArrowDown, ExternalLink, RefreshCw
 } from 'lucide-react'
 
 // --- Types ---
@@ -16,7 +16,42 @@ interface Editor {
   yaas_id: string
   hasSubmitted: boolean
   submittedAt?: string
-  currentReport?: any
+}
+
+interface FlatRow {
+  uniqueId: string // Combo of reportId + index
+  reportId: string
+  
+  // General Data
+  submission_date: string
+  editor_name: string
+  yaas_id: string
+  editor_email: string
+  hygiene_score: number
+  mistakes_repeated: string
+  mistake_details: string
+  delays: string
+  delay_reasons: string
+  general_improvements: string
+  next_week_commitment: number
+  areas_improvement: string
+  overall_feedback: string
+
+  // IP Data
+  ip_name: string
+  lead_editor: string
+  channel_manager: string
+  reels_delivered: number
+  approved_reels: number
+  creative_inputs: string
+  has_blockers: string
+  blocker_details: string
+  avg_reiterations: number
+  has_qc_changes: string
+  qc_details: string
+  improvements: string
+  drive_links: string
+  manager_comments: string
 }
 
 export default function AdminDashboard() {
@@ -26,24 +61,25 @@ export default function AdminDashboard() {
   // --- Global State ---
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'tracker' | 'data'>('tracker')
-  
-  // --- Data State ---
   const [registry, setRegistry] = useState<any[]>([])
-  const [reports, setReports] = useState<any[]>([]) // Reports for SELECTED week
+  const [reports, setReports] = useState<any[]>([])
   
-  // --- Filters & Sort State ---
+  // --- Filter/Sort State ---
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [weekLabel, setWeekLabel] = useState('')
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState<'all' | 'submitted' | 'missing'>('all')
-  const [sortBy, setSortBy] = useState<'name' | 'id'>('name')
+  const [globalSearch, setGlobalSearch] = useState('')
+  
+  // Data Sheet Specific State
+  const [sortConfig, setSortConfig] = useState<{ key: keyof FlatRow; direction: 'asc' | 'desc' }>({ key: 'editor_name', direction: 'asc' })
+  const [columnFilters, setColumnFilters] = useState<Partial<Record<keyof FlatRow, string>>>({})
 
-  // --- Modal State (Editor History) ---
+  // --- Modal State (History) ---
   const [selectedEditor, setSelectedEditor] = useState<Editor | null>(null)
   const [historyReports, setHistoryReports] = useState<any[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const [historyDateRange, setHistoryDateRange] = useState({ start: '', end: '' })
 
-  // --- 1. Init: Load Registry ---
+  // --- 1. Init ---
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -52,315 +88,451 @@ export default function AdminDashboard() {
       const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
       if (profile?.role !== 'admin') return router.push('/dashboard')
 
-      // Get All Editors
       const { data: reg } = await supabase.from('editor_registry').select('*').order('name')
       if (reg) setRegistry(reg)
-      
       setLoading(false)
     }
     init()
   }, [])
 
-  // --- 2. Fetch Reports when Date Changes ---
+  // --- 2. Fetch Reports ---
   useEffect(() => {
     const fetchReports = async () => {
       const { weekLabel: w } = calculateWeekAndMonth(selectedDate)
       setWeekLabel(w)
-      
-      // Get Reports ONLY for this week
       const { data } = await supabase.from('reports').select('*').eq('week_label', w)
       if (data) setReports(data)
     }
     fetchReports()
   }, [selectedDate])
 
-  // --- 3. Process Data (Filter & Sort) ---
-  const trackerData = registry.map(editor => {
-    const report = reports.find(r => r.editor_email === editor.email)
-    return {
-      ...editor,
-      hasSubmitted: !!report,
-      submittedAt: report?.created_at,
-      currentReport: report
+  // --- 3. Flatten Data for Table ---
+  const rawFlatData: FlatRow[] = useMemo(() => {
+    return reports.flatMap(r => {
+      const ips = r.ip_data || []
+      // If no IPs, return one row with empty IP data
+      if (ips.length === 0) {
+        return [{
+          uniqueId: r.id + '_0', reportId: r.id,
+          submission_date: r.submission_date, editor_name: r.editor_name, yaas_id: r.yaas_id, editor_email: r.editor_email,
+          hygiene_score: r.hygiene_score, mistakes_repeated: r.mistakes_repeated ? 'Yes' : 'No', mistake_details: r.mistake_details,
+          delays: r.delays ? 'Yes' : 'No', delay_reasons: r.delay_reasons, general_improvements: r.general_improvements,
+          next_week_commitment: r.next_week_commitment, areas_improvement: r.areas_improvement, overall_feedback: r.overall_feedback,
+          ip_name: '-', lead_editor: '-', channel_manager: '-', reels_delivered: 0, approved_reels: 0,
+          creative_inputs: '-', has_blockers: '-', blocker_details: '-', avg_reiterations: 0,
+          has_qc_changes: '-', qc_details: '-', improvements: '-', drive_links: '', manager_comments: '-'
+        }]
+      }
+      // Map IPs to rows
+      return ips.map((ip: any, idx: number) => ({
+        uniqueId: r.id + '_' + idx,
+        reportId: r.id,
+        // General
+        submission_date: r.submission_date, editor_name: r.editor_name, yaas_id: r.yaas_id, editor_email: r.editor_email,
+        hygiene_score: r.hygiene_score, mistakes_repeated: r.mistakes_repeated ? 'Yes' : 'No', mistake_details: r.mistake_details,
+        delays: r.delays ? 'Yes' : 'No', delay_reasons: r.delay_reasons, general_improvements: r.general_improvements,
+        next_week_commitment: r.next_week_commitment, areas_improvement: r.areas_improvement, overall_feedback: r.overall_feedback,
+        // IP Specific
+        ip_name: ip.ip_name, lead_editor: ip.lead_editor, channel_manager: ip.channel_manager,
+        reels_delivered: ip.reels_delivered || 0, approved_reels: ip.approved_reels || 0,
+        creative_inputs: ip.creative_inputs, has_blockers: ip.has_blockers, blocker_details: ip.blocker_details,
+        avg_reiterations: ip.avg_reiterations || 0, has_qc_changes: ip.has_qc_changes, qc_details: ip.qc_details,
+        improvements: ip.improvements, drive_links: ip.drive_links, manager_comments: ip.manager_comments
+      }))
+    })
+  }, [reports])
+
+  // --- 4. Filtering & Sorting Logic ---
+  const processedData = useMemo(() => {
+    let data = [...rawFlatData]
+
+    // A. Global Search
+    if (globalSearch) {
+      const lower = globalSearch.toLowerCase()
+      data = data.filter(row => 
+        row.editor_name.toLowerCase().includes(lower) || 
+        row.yaas_id.toLowerCase().includes(lower) ||
+        row.ip_name.toLowerCase().includes(lower)
+      )
     }
-  }).filter((editor: Editor) => {
-    // 1. Search Filter
-    const matchesSearch = 
-      editor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      editor.yaas_id.toLowerCase().includes(searchTerm.toLowerCase())
+
+    // B. Column Filters (e.g. Clicking on an IP)
+    Object.keys(columnFilters).forEach((key) => {
+      const filterVal = columnFilters[key as keyof FlatRow]?.toLowerCase()
+      if (filterVal) {
+        data = data.filter(row => String(row[key as keyof FlatRow]).toLowerCase().includes(filterVal))
+      }
+    })
+
+    // C. Sorting
+    data.sort((a, b) => {
+      const valA = a[sortConfig.key]
+      const valB = b[sortConfig.key]
+      
+      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1
+      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1
+      return 0
+    })
+
+    return data
+  }, [rawFlatData, globalSearch, sortConfig, columnFilters])
+
+  // --- 5. Grouping Logic (RowSpan) ---
+  // We only merge cells if we are sorting by Name, ID, or Date. 
+  // If sorting by "Reels Delivered", merging makes no sense visually.
+  const isGrouped = ['editor_name', 'yaas_id', 'submission_date'].includes(sortConfig.key)
+
+  const getRowSpan = (row: FlatRow, index: number, data: FlatRow[]) => {
+    if (!isGrouped) return 1
     
-    // 2. Status Filter
-    const matchesStatus = 
-      filterStatus === 'all' ? true :
-      filterStatus === 'submitted' ? editor.hasSubmitted :
-      !editor.hasSubmitted
+    // If it's the first row OR the reportID is different from previous, calculate span
+    if (index === 0 || row.reportId !== data[index - 1].reportId) {
+      let span = 1
+      for (let i = index + 1; i < data.length; i++) {
+        if (data[i].reportId === row.reportId) span++
+        else break
+      }
+      return span
+    }
+    return 0 // Hidden row
+  }
 
-    return matchesSearch && matchesStatus
-  }).sort((a: Editor, b: Editor) => {
-    // 3. Sorting
-    if (sortBy === 'name') return a.name.localeCompare(b.name)
-    if (sortBy === 'id') return a.yaas_id.localeCompare(b.yaas_id)
-    return 0
-  })
+  // --- Handlers ---
+  const handleSort = (key: keyof FlatRow) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }))
+  }
 
-  // --- 4. Handle Card Click (Load History) ---
-  const openEditorHistory = async (editor: Editor) => {
-    setSelectedEditor(editor)
+  const applyColumnFilter = (key: keyof FlatRow, value: string) => {
+    setColumnFilters(prev => ({ ...prev, [key]: value }))
+    setViewMode('data') // Switch to data view if not already
+  }
+
+  const clearFilters = () => {
+    setGlobalSearch('')
+    setColumnFilters({})
+    setSortConfig({ key: 'editor_name', direction: 'asc' })
+  }
+
+  // --- History Modal Logic ---
+  const openEditorHistory = async (editorEmail: string, editorName: string, editorId: string) => {
+    setSelectedEditor({ name: editorName, email: editorEmail, yaas_id: editorId, hasSubmitted: true })
     setLoadingHistory(true)
-    // Fetch ALL reports for this user, ordered by newest first
-    const { data } = await supabase
-      .from('reports')
-      .select('*')
-      .eq('editor_email', editor.email)
-      .order('submission_date', { ascending: false })
     
+    let query = supabase.from('reports').select('*').eq('editor_email', editorEmail).order('submission_date', { ascending: false })
+    
+    // Apply Date Range if selected
+    if (historyDateRange.start) query = query.gte('submission_date', historyDateRange.start)
+    if (historyDateRange.end) query = query.lte('submission_date', historyDateRange.end)
+
+    const { data } = await query
     setHistoryReports(data || [])
     setLoadingHistory(false)
   }
 
-  // --- Flatten Data for Data Sheet View ---
-  const flatData = reports.flatMap(r => {
-    const ips = r.ip_data || []
-    if (ips.length === 0) return [r]
-    return ips.map((ip: any) => ({ ...r, ...ip }))
-  })
+  // Trigger refetch when date range changes inside modal
+  useEffect(() => {
+    if (selectedEditor) {
+      openEditorHistory(selectedEditor.email, selectedEditor.name, selectedEditor.yaas_id)
+    }
+  }, [historyDateRange])
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-500">Loading Dashboard...</div>
+  // --- Render Helpers ---
+  const renderHeader = (label: string, key: keyof FlatRow, width: string = 'w-auto') => (
+    <th className={`p-3 border text-xs font-bold text-slate-700 bg-slate-50 sticky top-0 z-10 select-none group ${width}`}>
+      <div className="flex items-center gap-1 cursor-pointer hover:text-blue-600" onClick={() => handleSort(key)}>
+        {label}
+        {sortConfig.key === key && (sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
+      </div>
+      {/* Mini Filter Input inside Header */}
+      {viewMode === 'data' && (
+         <div className="mt-1 relative">
+           <input 
+             type="text" 
+             placeholder="Filter..." 
+             className="w-full text-[10px] p-1 border rounded font-normal outline-none focus:border-blue-500"
+             value={columnFilters[key] || ''}
+             onChange={(e) => setColumnFilters(prev => ({ ...prev, [key]: e.target.value }))}
+             onClick={(e) => e.stopPropagation()}
+           />
+           {columnFilters[key] && (
+             <X size={10} className="absolute right-1 top-1.5 cursor-pointer text-slate-400 hover:text-red-500" 
+                onClick={(e: React.MouseEvent) => { e.stopPropagation(); setColumnFilters(prev => ({ ...prev, [key]: '' })) }} />
+           )}
+         </div>
+      )}
+    </th>
+  )
+
+  const renderCell = (row: FlatRow, index: number, key: keyof FlatRow, data: FlatRow[], isGeneral: boolean) => {
+    if (isGeneral && isGrouped) {
+      const span = getRowSpan(row, index, data)
+      if (span === 0) return null
+      return (
+        <td rowSpan={span} className="p-2 border align-top bg-white group-hover:bg-slate-50/50">
+          {renderCellValue(row, key)}
+        </td>
+      )
+    }
+    // If not grouped (IP data or Sorted by Metric), render every cell
+    return (
+      <td className={`p-2 border align-top ${isGeneral ? 'bg-white' : 'bg-blue-50/10'}`}>
+        {renderCellValue(row, key)}
+      </td>
+    )
+  }
+
+  const renderCellValue = (row: FlatRow, key: keyof FlatRow) => {
+    const val = row[key]
+    
+    // Special Interaction: Click Name -> History
+    if (key === 'editor_name') {
+      return (
+        <button onClick={() => openEditorHistory(row.editor_email, row.editor_name, row.yaas_id)} 
+          className="font-bold text-slate-800 hover:text-blue-600 hover:underline text-left">
+          {val}
+        </button>
+      )
+    }
+    // Special Interaction: Click IP -> Filter
+    if (key === 'ip_name') {
+      return (
+        <button onClick={() => applyColumnFilter('ip_name', String(val))} 
+          className="font-medium text-blue-700 hover:underline text-left">
+          {val}
+        </button>
+      )
+    }
+    // Links
+    if (key === 'drive_links' && val) {
+      return <span title={String(val)} className="text-blue-500 cursor-pointer text-[10px]">View Links</span>
+    }
+    // Percentages
+    if (key === 'approved_reels') { // Actually calculating Pass Rate logic for display if needed, but here just showing value
+       return val
+    }
+
+    return <span className="truncate block max-w-[200px]" title={String(val)}>{val}</span>
+  }
+
+  if (loading) return <div className="p-10 text-center">Loading...</div>
+
+  // --- Tracker Data Prep ---
+  const trackerData = registry.map(editor => {
+    const report = reports.find(r => r.editor_email === editor.email)
+    return { ...editor, hasSubmitted: !!report }
+  }).filter(e => e.name.toLowerCase().includes(globalSearch.toLowerCase()))
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 font-sans text-slate-800">
       
-      {/* --- HEADER --- */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      {/* HEADER & CONTROLS */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Admin Dashboard</h1>
-          <p className="text-sm text-slate-500">Overview of {weekLabel}</p>
+          <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+          <p className="text-xs text-slate-500 flex items-center gap-2 mt-1">
+            <Clock size={12}/> {weekLabel} 
+            {Object.keys(columnFilters).length > 0 && <span className="text-orange-600 font-bold ml-2">(Filters Active)</span>}
+          </p>
         </div>
-        
-        <div className="flex items-center gap-4 bg-white p-2 rounded-xl border shadow-sm">
-           <div className="flex items-center gap-2 px-2">
-             <Calendar size={18} className="text-blue-600" />
-             <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} 
-               className="text-sm font-medium outline-none text-slate-700 bg-transparent cursor-pointer" />
+
+        <div className="flex flex-wrap gap-3 items-center bg-white p-2 rounded-xl shadow-sm border">
+           {/* Date Picker */}
+           <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-lg border">
+             <Calendar size={16} className="text-blue-600"/>
+             <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="bg-transparent outline-none text-sm font-medium"/>
            </div>
+
+           <div className="w-[1px] h-6 bg-slate-200 hidden md:block"></div>
+
+           {/* View Mode */}
+           <div className="flex bg-slate-100 rounded-lg p-1">
+              <button onClick={() => setViewMode('tracker')} className={`px-3 py-1.5 text-xs font-bold rounded ${viewMode === 'tracker' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Tracker</button>
+              <button onClick={() => setViewMode('data')} className={`px-3 py-1.5 text-xs font-bold rounded ${viewMode === 'data' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Data Sheet</button>
+           </div>
+
+           {/* Search & Reset */}
+           <div className="relative">
+              <Search size={14} className="absolute left-2.5 top-2.5 text-slate-400"/>
+              <input type="text" placeholder="Global Search..." value={globalSearch} onChange={e => setGlobalSearch(e.target.value)}
+                className="pl-8 pr-2 py-1.5 text-sm border rounded-lg w-40 focus:w-56 transition-all outline-none focus:ring-2 focus:ring-blue-500"/>
+           </div>
+           
+           <button onClick={clearFilters} title="Clear All Filters" className="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition">
+             <RefreshCw size={16} />
+           </button>
         </div>
       </div>
 
-      {/* --- CONTROLS TOOLBAR --- */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
-        
-        {/* View Switcher */}
-        <div className="flex bg-slate-100 rounded-lg p-1">
-          <button onClick={() => setViewMode('tracker')} 
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition ${viewMode === 'tracker' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-            <LayoutList size={16} /> Tracker
-          </button>
-          <button onClick={() => setViewMode('data')} 
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition ${viewMode === 'data' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-            <Table2 size={16} /> Data Sheet
-          </button>
-        </div>
-
-        {/* Filters & Sort (Only for Tracker) */}
-        {viewMode === 'tracker' && (
-          <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
-            {/* Search */}
-            <div className="relative flex-1 md:flex-none">
-              <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
-              <input type="text" placeholder="Search name or ID..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                className="pl-9 pr-4 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-56" />
-            </div>
-
-            {/* Filter Dropdown */}
-            <div className="relative group">
-              <div className="flex items-center gap-2 px-3 py-2 border rounded-lg text-sm text-slate-600 cursor-pointer hover:bg-slate-50">
-                <Filter size={14} />
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as any)} 
-                  className="bg-transparent outline-none cursor-pointer appearance-none pr-4">
-                  <option value="all">All Status</option>
-                  <option value="submitted">Submitted</option>
-                  <option value="missing">Missing</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Sort Dropdown */}
-            <div className="relative">
-              <div className="flex items-center gap-2 px-3 py-2 border rounded-lg text-sm text-slate-600 cursor-pointer hover:bg-slate-50">
-                <ArrowUpDown size={14} />
-                <select value={sortBy} onChange={e => setSortBy(e.target.value as any)} 
-                  className="bg-transparent outline-none cursor-pointer appearance-none pr-4">
-                  <option value="name">Name (A-Z)</option>
-                  <option value="id">YAAS ID</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* --- VIEW 1: TRACKER GRID --- */}
+      {/* === VIEW 1: TRACKER === */}
       {viewMode === 'tracker' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {trackerData.map((editor) => (
-            <div key={editor.yaas_id} onClick={() => openEditorHistory(editor)}
-              className={`p-4 rounded-xl border relative group cursor-pointer transition-all hover:shadow-md
-                ${editor.hasSubmitted ? 'bg-white border-slate-200' : 'bg-red-50/50 border-red-100'}
-              `}>
-              <div className="flex justify-between items-start mb-2">
-                <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                  {editor.yaas_id}
-                </span>
-                {editor.hasSubmitted 
-                  ? <CheckCircle size={18} className="text-green-500" />
-                  : <XCircle size={18} className="text-red-400 opacity-50" />
-                }
-              </div>
-              
-              <h3 className="font-bold text-slate-800 truncate">{editor.name}</h3>
-              <p className="text-xs text-slate-500 truncate mb-3">{editor.email}</p>
-              
-              <div className="flex items-center justify-between mt-4">
-                <div className={`text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1
-                  ${editor.hasSubmitted ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  {editor.hasSubmitted ? 'Submitted' : 'Pending'}
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {trackerData.map((editor: any) => (
+             <div key={editor.yaas_id} onClick={() => openEditorHistory(editor.email, editor.name, editor.yaas_id)}
+                className={`p-4 rounded-xl border cursor-pointer hover:shadow-md transition bg-white
+                  ${editor.hasSubmitted ? 'border-green-200' : 'border-red-200'}
+                `}>
+                <div className="flex justify-between mb-2">
+                   <span className="text-[10px] font-mono font-bold text-slate-500">{editor.yaas_id}</span>
+                   {editor.hasSubmitted ? <CheckCircle size={16} className="text-green-500"/> : <XCircle size={16} className="text-red-400"/>}
                 </div>
-                <ChevronRight size={16} className="text-slate-300 group-hover:text-blue-500 transition" />
-              </div>
-            </div>
-          ))}
-          {trackerData.length === 0 && (
-             <div className="col-span-full py-12 text-center text-slate-500">
-                No editors found matching your filters.
+                <div className="font-bold text-sm truncate">{editor.name}</div>
+                <div className={`mt-3 text-xs text-center py-1 rounded font-bold ${editor.hasSubmitted ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                   {editor.hasSubmitted ? 'Submitted' : 'Missing'}
+                </div>
              </div>
-          )}
+          ))}
         </div>
       )}
 
-      {/* --- VIEW 2: DATA SHEET (Excel Style) --- */}
+      {/* === VIEW 2: DATA SHEET (Complex Table) === */}
       {viewMode === 'data' && (
-        <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse whitespace-nowrap">
-            <thead className="bg-slate-50 text-slate-700 font-bold border-b">
-              <tr>
-                <th className="p-3 border sticky left-0 bg-slate-50 z-10">Name</th>
-                <th className="p-3 border">YAAS ID</th>
-                <th className="p-3 border">Hygiene</th>
-                <th className="p-3 border">IP Name</th>
-                <th className="p-3 border">Delivered</th>
-                <th className="p-3 border">Approved</th>
-                <th className="p-3 border">Pass %</th>
-                <th className="p-3 border max-w-xs">Improvements</th>
-                <th className="p-3 border max-w-xs">Links</th>
-              </tr>
-            </thead>
-            <tbody>
-              {flatData.map((row: any, i) => (
-                <tr key={i} className="hover:bg-slate-50">
-                  <td className="p-2 border font-bold sticky left-0 bg-white">{row.editor_name}</td>
-                  <td className="p-2 border">{row.yaas_id}</td>
-                  <td className="p-2 border">{row.hygiene_score}</td>
-                  <td className="p-2 border font-medium text-blue-700">{row.ip_name}</td>
-                  <td className="p-2 border text-center">{row.reels_delivered}</td>
-                  <td className="p-2 border text-center">{row.approved_reels}</td>
-                  <td className="p-2 border text-center">
-                    {row.reels_delivered > 0 ? ((row.approved_reels / row.reels_delivered) * 100).toFixed(0) + '%' : '-'}
-                  </td>
-                  <td className="p-2 border truncate max-w-[200px]" title={row.improvements}>{row.improvements}</td>
-                  <td className="p-2 border truncate max-w-[150px]">
-                    {row.drive_links && <a href="#" className="text-blue-600 underline">View Links</a>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="bg-white rounded-xl shadow border overflow-hidden flex flex-col h-[80vh]">
+          <div className="overflow-auto flex-1">
+            <table className="w-full text-xs text-left border-collapse whitespace-nowrap">
+              <thead className="bg-slate-50">
+                 <tr>
+                    {/* General Columns */}
+                    {renderHeader('Timestamp', 'submission_date')}
+                    {renderHeader('Name', 'editor_name')}
+                    {renderHeader('ID', 'yaas_id')}
+                    {renderHeader('Email', 'editor_email')}
+                    {renderHeader('Hygiene', 'hygiene_score')}
+                    {renderHeader('Mistakes?', 'mistakes_repeated')}
+                    {renderHeader('Mistake Details', 'mistake_details', 'min-w-[150px]')}
+                    {renderHeader('Delays?', 'delays')}
+                    {renderHeader('Delay Reason', 'delay_reasons', 'min-w-[150px]')}
+                    {renderHeader('Gen. Improvements', 'general_improvements', 'min-w-[150px]')}
+                    {renderHeader('Target', 'next_week_commitment')}
+                    {renderHeader('Areas Imp.', 'areas_improvement', 'min-w-[150px]')}
+                    {renderHeader('Reflection', 'overall_feedback', 'min-w-[150px]')}
+                    
+                    {/* IP Columns (Blue Header to distinguish) */}
+                    <th className="border p-2 bg-blue-50 w-2"></th> 
+                    {renderHeader('IP Name', 'ip_name', 'bg-blue-50 text-blue-900')}
+                    {renderHeader('Lead', 'lead_editor', 'bg-blue-50 text-blue-900')}
+                    {renderHeader('Manager', 'channel_manager', 'bg-blue-50 text-blue-900')}
+                    {renderHeader('Delivered', 'reels_delivered', 'bg-blue-50 text-blue-900')}
+                    {renderHeader('Approved', 'approved_reels', 'bg-blue-50 text-blue-900')}
+                    {renderHeader('Creative', 'creative_inputs', 'bg-blue-50 text-blue-900 min-w-[150px]')}
+                    {renderHeader('Blockers?', 'has_blockers', 'bg-blue-50 text-blue-900')}
+                    {renderHeader('Blocker Det', 'blocker_details', 'bg-blue-50 text-blue-900 min-w-[150px]')}
+                    {renderHeader('Avg Iter', 'avg_reiterations', 'bg-blue-50 text-blue-900')}
+                    {renderHeader('QC Repeat?', 'has_qc_changes', 'bg-blue-50 text-blue-900')}
+                    {renderHeader('QC Detail', 'qc_details', 'bg-blue-50 text-blue-900 min-w-[150px]')}
+                    {renderHeader('IP Imp.', 'improvements', 'bg-blue-50 text-blue-900 min-w-[150px]')}
+                    {renderHeader('Links', 'drive_links', 'bg-blue-50 text-blue-900')}
+                    {renderHeader('Mgr Comment', 'manager_comments', 'bg-blue-50 text-blue-900 min-w-[150px]')}
+                 </tr>
+              </thead>
+              <tbody>
+                {processedData.length > 0 ? processedData.map((row, i) => (
+                  <tr key={row.uniqueId} className="hover:bg-slate-50 group">
+                    {/* General Data Cells (Merged) */}
+                    {renderCell(row, i, 'submission_date', processedData, true)}
+                    {renderCell(row, i, 'editor_name', processedData, true)}
+                    {renderCell(row, i, 'yaas_id', processedData, true)}
+                    {renderCell(row, i, 'editor_email', processedData, true)}
+                    {renderCell(row, i, 'hygiene_score', processedData, true)}
+                    {renderCell(row, i, 'mistakes_repeated', processedData, true)}
+                    {renderCell(row, i, 'mistake_details', processedData, true)}
+                    {renderCell(row, i, 'delays', processedData, true)}
+                    {renderCell(row, i, 'delay_reasons', processedData, true)}
+                    {renderCell(row, i, 'general_improvements', processedData, true)}
+                    {renderCell(row, i, 'next_week_commitment', processedData, true)}
+                    {renderCell(row, i, 'areas_improvement', processedData, true)}
+                    {renderCell(row, i, 'overall_feedback', processedData, true)}
+
+                    {/* Separator */}
+                    <td className="bg-blue-50/20 border-x w-2"></td>
+
+                    {/* IP Data Cells (Never Merged) */}
+                    {renderCell(row, i, 'ip_name', processedData, false)}
+                    {renderCell(row, i, 'lead_editor', processedData, false)}
+                    {renderCell(row, i, 'channel_manager', processedData, false)}
+                    {renderCell(row, i, 'reels_delivered', processedData, false)}
+                    {renderCell(row, i, 'approved_reels', processedData, false)}
+                    {renderCell(row, i, 'creative_inputs', processedData, false)}
+                    {renderCell(row, i, 'has_blockers', processedData, false)}
+                    {renderCell(row, i, 'blocker_details', processedData, false)}
+                    {renderCell(row, i, 'avg_reiterations', processedData, false)}
+                    {renderCell(row, i, 'has_qc_changes', processedData, false)}
+                    {renderCell(row, i, 'qc_details', processedData, false)}
+                    {renderCell(row, i, 'improvements', processedData, false)}
+                    {renderCell(row, i, 'drive_links', processedData, false)}
+                    {renderCell(row, i, 'manager_comments', processedData, false)}
+                  </tr>
+                )) : (
+                  <tr><td colSpan={30} className="p-10 text-center text-slate-500">No records found matching filters.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="bg-slate-50 p-2 text-xs text-slate-500 border-t flex justify-between">
+             <span>Showing {processedData.length} rows</span>
+             <span>Note: General columns merge automatically when sorted by Name/ID.</span>
+          </div>
         </div>
       )}
 
-      {/* --- MODAL: EDITOR HISTORY --- */}
+      {/* --- HISTORY MODAL --- */}
       {selectedEditor && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex justify-end transition-opacity" onClick={() => setSelectedEditor(null)}>
-          <div className="bg-slate-50 w-full max-w-2xl h-full shadow-2xl overflow-y-auto" onClick={e => e.stopPropagation()}>
-            
-            {/* Modal Header */}
-            <div className="bg-white sticky top-0 z-10 border-b p-6 flex justify-between items-start">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">{selectedEditor.name}</h2>
-                <div className="flex gap-3 text-sm text-slate-500 mt-1">
-                  <span className="font-mono bg-slate-100 px-1 rounded">{selectedEditor.yaas_id}</span>
-                  <span>{selectedEditor.email}</span>
-                </div>
+        <div className="fixed inset-0 bg-black/50 z-50 flex justify-end" onClick={() => setSelectedEditor(null)}>
+           <div className="bg-slate-50 w-full max-w-3xl h-full shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+              
+              <div className="bg-white p-6 border-b">
+                 <div className="flex justify-between items-start">
+                    <div>
+                       <h2 className="text-xl font-bold">{selectedEditor.name}</h2>
+                       <div className="text-slate-500 text-sm mt-1">{selectedEditor.email} • {selectedEditor.yaas_id}</div>
+                    </div>
+                    <button onClick={() => setSelectedEditor(null)}><X size={20}/></button>
+                 </div>
+                 
+                 {/* Date Range for History */}
+                 <div className="mt-6 flex items-center gap-2 text-sm bg-slate-50 p-3 rounded-lg border">
+                    <span className="font-bold text-slate-600">Filter History:</span>
+                    <input type="date" className="border rounded px-2 py-1" 
+                      onChange={e => setHistoryDateRange(p => ({...p, start: e.target.value}))}/>
+                    <span>to</span>
+                    <input type="date" className="border rounded px-2 py-1"
+                      onChange={e => setHistoryDateRange(p => ({...p, end: e.target.value}))}/>
+                 </div>
               </div>
-              <button onClick={() => setSelectedEditor(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
-                <X size={20} />
-              </button>
-            </div>
 
-            {/* Modal Content */}
-            <div className="p-6 space-y-6">
-              <h3 className="font-bold text-slate-700 flex items-center gap-2">
-                <Clock size={16} /> Submission History
-              </h3>
-
-              {loadingHistory ? (
-                <div className="text-center py-10 text-slate-500">Loading history...</div>
-              ) : historyReports.length === 0 ? (
-                <div className="p-8 border-2 border-dashed border-slate-200 rounded-xl text-center text-slate-400">
-                  No reports submitted yet.
-                </div>
-              ) : (
-                historyReports.map((report) => (
-                  <div key={report.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                    {/* Report Header */}
-                    <div className="bg-blue-50/50 p-4 border-b flex justify-between items-center">
-                      <span className="font-bold text-blue-800 text-sm">{report.week_label}</span>
-                      <span className="text-xs text-slate-500">{new Date(report.submission_date).toLocaleDateString()}</span>
-                    </div>
-                    
-                    {/* General Stats */}
-                    <div className="p-4 grid grid-cols-2 gap-4 text-sm border-b border-slate-50">
-                      <div>
-                        <span className="text-slate-500 block text-xs uppercase font-bold">Hygiene</span>
-                        <span className="font-medium text-slate-800">{report.hygiene_score}/10</span>
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                 {loadingHistory ? (
+                   <div className="text-center py-10">Loading...</div>
+                 ) : historyReports.length === 0 ? (
+                   <div className="text-center py-10 text-slate-400">No reports found in this range.</div>
+                 ) : (
+                   historyReports.map(r => (
+                      <div key={r.id} className="bg-white border rounded-xl overflow-hidden shadow-sm">
+                         <div className="bg-blue-50/50 p-3 border-b flex justify-between font-bold text-sm text-blue-900">
+                            <span>{r.week_label}</span>
+                            <span>{new Date(r.submission_date).toLocaleDateString()}</span>
+                         </div>
+                         <div className="p-4 grid grid-cols-2 gap-4 text-sm">
+                            <div><span className="block text-xs font-bold text-slate-400">HYGIENE</span> {r.hygiene_score}</div>
+                            <div><span className="block text-xs font-bold text-slate-400">TARGET</span> {r.next_week_commitment}</div>
+                            <div className="col-span-2">
+                               <span className="block text-xs font-bold text-slate-400 mb-1">IPS WORKED ON</span>
+                               <div className="flex flex-wrap gap-2">
+                                  {r.ip_data && r.ip_data.map((ip: any, i: number) => (
+                                     <span key={i} className="bg-slate-100 px-2 py-1 rounded text-xs border">
+                                        {ip.ip_name} ({ip.reels_delivered}/{ip.approved_reels})
+                                     </span>
+                                  ))}
+                               </div>
+                            </div>
+                         </div>
                       </div>
-                      <div>
-                         <span className="text-slate-500 block text-xs uppercase font-bold">Commitment</span>
-                         <span className="font-medium text-slate-800">{report.next_week_commitment} Reels</span>
-                      </div>
-                    </div>
-
-                    {/* IPs List */}
-                    <div className="p-4 bg-slate-50/30">
-                      <span className="text-xs font-bold text-slate-400 uppercase mb-2 block">IPs Worked On</span>
-                      <div className="space-y-2">
-                        {report.ip_data && report.ip_data.map((ip: any, idx: number) => (
-                           <div key={idx} className="bg-white p-3 rounded border text-sm flex justify-between items-center">
-                              <span className="font-medium text-slate-700">{ip.ip_name}</span>
-                              <div className="flex gap-3 text-xs">
-                                <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded border border-green-100">
-                                  {ip.reels_delivered} Del
-                                </span>
-                                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">
-                                  {ip.approved_reels} App
-                                </span>
-                              </div>
-                           </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Feedback (Collapsible-ish feel) */}
-                    {(report.overall_feedback || report.general_improvements) && (
-                      <div className="p-4 text-xs text-slate-600 border-t">
-                        <p className="line-clamp-2"><strong>Feedback:</strong> {report.overall_feedback || "No feedback provided."}</p>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-
-          </div>
+                   ))
+                 )}
+              </div>
+           </div>
         </div>
       )}
 
