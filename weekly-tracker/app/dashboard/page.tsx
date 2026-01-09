@@ -57,13 +57,13 @@ export default function Dashboard() {
   const [labels, setLabels] = useState({ weekLabel: '', monthLabel: '' })
   
   const [general, setGeneral] = useState({
-    hygiene_score: 0,
+    hygiene_score: ,
     mistakes_repeated: "No",
     mistake_details: "",
     delays: "No",
     delay_reasons: "",
     general_improvements: "",
-    next_week_commitment: 0,
+    next_week_commitment: ,
     areas_improvement: "",
     overall_feedback: ""
   })
