@@ -141,11 +141,13 @@ export default function Dashboard() {
         editor_name: editorInfo.name, editor_email: editorInfo.email, yaas_id: editorInfo.yaas_id,
         submission_date: date, 
         week_label: labels.weekLabel, month_label: labels.monthLabel,
+        
         hygiene_score: general.hygiene_score,
         mistakes_repeated: general.mistakes_repeated === 'Yes', mistake_details: general.mistake_details,
         delays: general.delays === 'Yes', delay_reasons: general.delay_reasons,
         general_improvements: general.general_improvements, next_week_commitment: general.next_week_commitment,
         areas_improvement: general.areas_improvement, overall_feedback: general.overall_feedback,
+        
         ip_data: items
       })
 
@@ -206,6 +208,7 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Section 1: General */}
           <div>
             <h2 className="text-xl font-bold border-b border-slate-200 pb-2 mb-4 text-slate-800">1. General Questions</h2>
             <div className="space-y-6">
@@ -214,14 +217,16 @@ export default function Dashboard() {
                   <label className="block text-sm font-semibold text-slate-900 mb-1">
                     Hygiene Score <Tooltip text="Rate your file management, naming conventions, and general discipline out of 10."/>
                   </label>
-                  <input type="number" min="0" max="10" step="0.5" required className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="0-10"
+                  {/* UPDATED: Placeholder 7.5 */}
+                  <input type="number" min="0" max="10" step="0.5" required className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="7.5"
                     value={general.hygiene_score} onChange={e => setGeneral({...general, hygiene_score: parseFloat(e.target.value)})} />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-900 mb-1">
                     Next Week Commitment <Tooltip text="How many reels/animations do you commit to deliver next week?"/>
                   </label>
-                  <input type="number" step="0.5" className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  {/* UPDATED: Placeholder 10 */}
+                  <input type="number" step="0.5" className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="10"
                     value={general.next_week_commitment} onChange={e => setGeneral({...general, next_week_commitment: parseFloat(e.target.value)})} />
                 </div>
               </div>
@@ -281,6 +286,7 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Section 2: IPs */}
           <div>
             <h2 className="text-xl font-bold border-b border-slate-200 pb-2 mb-4 mt-10 text-slate-800">2. Pod (IP) Related Questions</h2>
             
@@ -390,13 +396,31 @@ export default function Dashboard() {
                    </div>
 
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div><label className="block text-sm font-semibold text-slate-900 mb-1">Creative Inputs</label><textarea className="w-full p-2.5 border border-slate-300 rounded-lg h-24 text-sm" value={item.creative_inputs} onChange={e => updateItem(idx, 'creative_inputs', e.target.value)} /></div>
-                      <div><label className="block text-sm font-semibold text-slate-900 mb-1">Improvements (This IP)</label><textarea className="w-full p-2.5 border border-slate-300 rounded-lg h-24 text-sm" value={item.improvements} onChange={e => updateItem(idx, 'improvements', e.target.value)} /></div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-900 mb-1">Creative Inputs</label>
+                        {/* UPDATED: Description */}
+                        <span className="text-xs text-slate-500 block mb-2">Provide inputs on hooks, pacing, or process improvements for this IP (Instagram/YouTube content).</span>
+                        <textarea className="w-full p-2.5 border border-slate-300 rounded-lg h-24 text-sm" value={item.creative_inputs} onChange={e => updateItem(idx, 'creative_inputs', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-900 mb-1">Improvements (This IP)</label>
+                        {/* UPDATED: Description */}
+                        <span className="text-xs text-slate-500 block mb-2">Any specific improvement made on this IP (not limited to just editing).</span>
+                        <textarea className="w-full p-2.5 border border-slate-300 rounded-lg h-24 text-sm" value={item.improvements} onChange={e => updateItem(idx, 'improvements', e.target.value)} />
+                      </div>
                    </div>
                    
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <div><label className="block text-sm font-semibold text-slate-900 mb-1">Avg Reiterations</label><input type="number" step="0.1" className="w-full p-2.5 border border-slate-300 rounded-lg" value={item.avg_reiterations} onChange={e => updateItem(idx, 'avg_reiterations', parseFloat(e.target.value))} /></div>
-                     <div><label className="block text-sm font-semibold text-slate-900 mb-1">Manager Comments</label><textarea className="w-full p-2.5 border border-slate-300 rounded-lg h-12 text-sm" value={item.manager_comments} onChange={e => updateItem(idx, 'manager_comments', e.target.value)} /></div>
+                     <div>
+                       {/* UPDATED: Tooltip */}
+                       <label className="block text-sm font-semibold text-slate-900 mb-1">Avg Reiterations <Tooltip text="Average number of revision rounds per video."/></label>
+                       <input type="number" step="0.1" className="w-full p-2.5 border border-slate-300 rounded-lg" value={item.avg_reiterations} onChange={e => updateItem(idx, 'avg_reiterations', parseFloat(e.target.value))} />
+                     </div>
+                     <div>
+                       {/* UPDATED: Tooltip */}
+                       <label className="block text-sm font-semibold text-slate-900 mb-1">Manager Comments <Tooltip text="Feedback on your Channel Manager or Lead Editor."/></label>
+                       <textarea className="w-full p-2.5 border border-slate-300 rounded-lg h-12 text-sm" value={item.manager_comments} onChange={e => updateItem(idx, 'manager_comments', e.target.value)} />
+                     </div>
                    </div>
 
                 </div>
