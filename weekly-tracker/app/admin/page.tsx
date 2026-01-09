@@ -2,11 +2,11 @@
 import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { calculateWeekAndMonth } from '@/lib/utils'
+import { calculateWeekAndMonth, getWeekOptions } from '@/lib/utils' // Import dropdown helper
 import { 
   Calendar, Search, LayoutList, Table2, 
   CheckCircle, XCircle, Filter, ArrowUpDown, 
-  X, Clock, ChevronRight, ArrowUp, ArrowDown, ExternalLink, RefreshCw
+  X, Clock, ArrowUp, ArrowDown, RefreshCw, ExternalLink
 } from 'lucide-react'
 
 // --- Types ---
@@ -40,7 +40,6 @@ interface FlatRow {
   lead_editor: string
   channel_manager: string
   
-  // Updated Metrics
   sf_daily: number
   sf_daily_note: string
   lf_daily: number
@@ -69,8 +68,11 @@ export default function AdminDashboard() {
   const [registry, setRegistry] = useState<any[]>([])
   const [reports, setReports] = useState<any[]>([])
   
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  // Week Selection
+  const weekOptions = getWeekOptions()
+  const [selectedDateValue, setSelectedDateValue] = useState(weekOptions[0].value)
   const [weekLabel, setWeekLabel] = useState('')
+  
   const [globalSearch, setGlobalSearch] = useState('')
   const [trackerStatusFilter, setTrackerStatusFilter] = useState<'all' | 'submitted' | 'missing'>('all')
 
@@ -99,13 +101,13 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const fetchReports = async () => {
-      const { weekLabel: w } = calculateWeekAndMonth(selectedDate)
+      const { weekLabel: w } = calculateWeekAndMonth(selectedDateValue)
       setWeekLabel(w)
       const { data } = await supabase.from('reports').select('*').eq('week_label', w)
       if (data) setReports(data)
     }
     fetchReports()
-  }, [selectedDate])
+  }, [selectedDateValue])
 
   const trackerData = useMemo(() => {
     return registry.map(editor => {
@@ -124,6 +126,7 @@ export default function AdminDashboard() {
     return reports.flatMap(r => {
       const ips = r.ip_data || []
       if (ips.length === 0) {
+        // Return dummy row if no IPs
         return [{
           uniqueId: r.id + '_0', reportId: r.id,
           submission_date: r.submission_date, editor_name: r.editor_name, yaas_id: r.yaas_id, editor_email: r.editor_email,
@@ -144,14 +147,9 @@ export default function AdminDashboard() {
         next_week_commitment: r.next_week_commitment, areas_improvement: r.areas_improvement, overall_feedback: r.overall_feedback,
         
         ip_name: ip.ip_name, lead_editor: ip.lead_editor, channel_manager: ip.channel_manager,
-        
-        sf_daily: ip.sf_daily || 0,
-        sf_daily_note: ip.sf_daily_note || '',
-        lf_daily: ip.lf_daily || 0,
-        lf_daily_note: ip.lf_daily_note || '',
-        total_minutes: ip.total_minutes || 0,
-        total_minutes_note: ip.total_minutes_note || '',
-        
+        sf_daily: ip.sf_daily || 0, sf_daily_note: ip.sf_daily_note || '',
+        lf_daily: ip.lf_daily || 0, lf_daily_note: ip.lf_daily_note || '',
+        total_minutes: ip.total_minutes || 0, total_minutes_note: ip.total_minutes_note || '',
         approved_reels: ip.approved_reels || 0,
         creative_inputs: ip.creative_inputs, has_blockers: ip.has_blockers, blocker_details: ip.blocker_details,
         avg_reiterations: ip.avg_reiterations || 0, has_qc_changes: ip.has_qc_changes, qc_details: ip.qc_details,
@@ -260,7 +258,7 @@ export default function AdminDashboard() {
     if (key === 'editor_name') return <button onClick={() => openEditorHistory(row.editor_email, row.editor_name, row.yaas_id)} className="font-bold text-slate-800 hover:text-blue-600 hover:underline text-left">{val}</button>
     if (key === 'ip_name') return <button onClick={() => setColumnFilters(prev => ({...prev, ip_name: String(val)}))} className="font-medium text-blue-700 hover:underline text-left">{val}</button>
     
-    // Parse Links
+    // Parse Links (handle newlines)
     if (key === 'drive_links' && val) {
       const links = String(val).match(/\bhttps?:\/\/\S+/gi);
       if (links && links.length > 0) {
@@ -307,21 +305,27 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex flex-wrap gap-3 items-center bg-white p-2 rounded-xl shadow-sm border">
-           {/* Date Picker */}
+           {/* Week Selector */}
            <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-lg border">
              <Calendar size={16} className="text-blue-600"/>
-             <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="bg-transparent outline-none text-sm font-medium"/>
+             <select 
+                 value={selectedDateValue} 
+                 onChange={e => setSelectedDateValue(e.target.value)} 
+                 className="bg-transparent outline-none text-sm font-medium cursor-pointer"
+               >
+                 {weekOptions.map(opt => (
+                   <option key={opt.value} value={opt.value}>{opt.label}</option>
+                 ))}
+             </select>
            </div>
 
            <div className="w-[1px] h-6 bg-slate-200 hidden md:block"></div>
 
-           {/* View Mode */}
            <div className="flex bg-slate-100 rounded-lg p-1">
               <button onClick={() => setViewMode('tracker')} className={`px-3 py-1.5 text-xs font-bold rounded ${viewMode === 'tracker' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Tracker</button>
               <button onClick={() => setViewMode('data')} className={`px-3 py-1.5 text-xs font-bold rounded ${viewMode === 'data' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Data Sheet</button>
            </div>
 
-           {/* STATUS FILTER (Only visible in Tracker mode) */}
            {viewMode === 'tracker' && (
              <div className="relative group">
                <div className="flex items-center gap-2 px-3 py-1.5 border rounded-lg text-xs font-medium text-slate-600 cursor-pointer hover:bg-slate-50">
@@ -336,7 +340,6 @@ export default function AdminDashboard() {
              </div>
            )}
 
-           {/* Search & Reset */}
            <div className="relative">
               <Search size={14} className="absolute left-2.5 top-2.5 text-slate-400"/>
               <input type="text" placeholder="Global Search..." value={globalSearch} onChange={e => setGlobalSearch(e.target.value)}
@@ -349,7 +352,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* === VIEW 1: TRACKER === */}
+      {/* VIEW 1: TRACKER */}
       {viewMode === 'tracker' && (
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {trackerData.map((editor: any) => (
@@ -375,7 +378,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* === VIEW 2: DATA SHEET === */}
+      {/* VIEW 2: DATA SHEET */}
       {viewMode === 'data' && (
         <div className="bg-white rounded-xl shadow border overflow-hidden flex flex-col h-[80vh]">
           <div className="overflow-auto flex-1">
@@ -399,12 +402,9 @@ export default function AdminDashboard() {
                     {renderHeader('IP Name', 'ip_name', 'bg-blue-50 text-blue-900')}
                     {renderHeader('Lead', 'lead_editor', 'bg-blue-50 text-blue-900')}
                     {renderHeader('Manager', 'channel_manager', 'bg-blue-50 text-blue-900')}
-                    
-                    {/* NEW HEADERS */}
                     {renderHeader('SF Daily', 'sf_daily', 'bg-blue-50 text-blue-900')}
                     {renderHeader('LF Daily', 'lf_daily', 'bg-blue-50 text-blue-900')}
                     {renderHeader('Total Mins', 'total_minutes', 'bg-blue-50 text-blue-900')}
-                    
                     {renderHeader('Approved', 'approved_reels', 'bg-blue-50 text-blue-900')}
                     {renderHeader('Creative', 'creative_inputs', 'bg-blue-50 text-blue-900 min-w-[150px]')}
                     {renderHeader('Blockers?', 'has_blockers', 'bg-blue-50 text-blue-900')}
@@ -437,12 +437,9 @@ export default function AdminDashboard() {
                     {renderCell(row, i, 'ip_name', processedTableData, false)}
                     {renderCell(row, i, 'lead_editor', processedTableData, false)}
                     {renderCell(row, i, 'channel_manager', processedTableData, false)}
-                    
-                    {/* NEW CELLS */}
                     {renderCell(row, i, 'sf_daily', processedTableData, false)}
                     {renderCell(row, i, 'lf_daily', processedTableData, false)}
                     {renderCell(row, i, 'total_minutes', processedTableData, false)}
-                    
                     {renderCell(row, i, 'approved_reels', processedTableData, false)}
                     {renderCell(row, i, 'creative_inputs', processedTableData, false)}
                     {renderCell(row, i, 'has_blockers', processedTableData, false)}
@@ -500,12 +497,17 @@ export default function AdminDashboard() {
                             <div><span className="block text-xs font-bold text-slate-400">HYGIENE</span> {r.hygiene_score}</div>
                             <div><span className="block text-xs font-bold text-slate-400">TARGET</span> {r.next_week_commitment}</div>
                             <div className="col-span-2">
-                               <span className="block text-xs font-bold text-slate-400 mb-1">IPS WORKED ON</span>
-                               <div className="flex flex-wrap gap-2">
+                               <span className="block text-xs font-bold text-slate-400 mb-2">IPS WORKED ON</span>
+                               <div className="space-y-2">
                                   {r.ip_data && r.ip_data.map((ip: any, i: number) => (
-                                     <span key={i} className="bg-slate-100 px-2 py-1 rounded text-xs border">
-                                        {ip.ip_name}
-                                     </span>
+                                     <div key={i} className="bg-slate-50 p-2 rounded border text-xs flex justify-between items-center">
+                                        <span className="font-bold text-slate-700">{ip.ip_name}</span>
+                                        <div className="flex gap-2">
+                                          {ip.sf_daily > 0 && <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">SF: {ip.sf_daily}</span>}
+                                          {ip.lf_daily > 0 && <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded">LF: {ip.lf_daily}</span>}
+                                          {ip.total_minutes > 0 && <span className="bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded">{ip.total_minutes}m</span>}
+                                        </div>
+                                     </div>
                                   ))}
                                </div>
                             </div>

@@ -5,37 +5,41 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// Generate dropdown options: Last 12 weeks + Next 2 weeks
+// Generate a clean list of the last 20 weeks (Descending)
 export function getWeekOptions() {
   const options = []
   const today = new Date()
   
-  // Iterate from -12 weeks (past) to +2 weeks (future)
-  for (let i = -12; i <= 2; i++) {
-    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (i * 7))
+  // 1. Find the Monday of the CURRENT week
+  const currentMonday = new Date(today)
+  const day = currentMonday.getDay()
+  const diff = currentMonday.getDate() - day + (day === 0 ? -6 : 1) // adjust when day is sunday
+  currentMonday.setDate(diff)
+  currentMonday.setHours(0, 0, 0, 0)
+
+  // 2. Generate past 20 weeks
+  for (let i = 0; i < 20; i++) {
+    const start = new Date(currentMonday)
+    start.setDate(currentMonday.getDate() - (i * 7))
     
-    // Adjust to Thursday to follow ISO week numbering logic
-    const dayNum = d.getDay() || 7
-    d.setHours(0, 0, 0, 0)
-    d.setDate(d.getDate() + 4 - dayNum)
+    const end = new Date(start)
+    end.setDate(start.getDate() + 6)
     
+    // Calculate Week Number logic
+    const d = new Date(start)
+    d.setDate(d.getDate() + 3) // Move to Thursday to gauge the week number
     const yearStart = new Date(d.getFullYear(), 0, 1)
     const weekNo = Math.ceil((((d.valueOf() - yearStart.valueOf()) / 86400000) + 1) / 7)
     
-    // Calculate display range (Monday to Sunday)
-    const startOfWeek = new Date(d)
-    startOfWeek.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1)) // Set to Monday
-    const endOfWeek = new Date(startOfWeek)
-    endOfWeek.setDate(startOfWeek.getDate() + 6) // Set to Sunday
-
-    // Label Format: "Week 50 (Dec 09 - Dec 15)"
-    const label = `Week ${weekNo} (${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`
+    const label = `Week ${weekNo} (${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`
     
-    // Value: ISO Date string of the specific day used for calculation
-    options.push({ label, value: d.toISOString().split('T')[0], weekNo })
+    // Value: We use the Thursday of that week to be safe for backend calculation
+    const value = d.toISOString().split('T')[0]
+    
+    options.push({ label, value })
   }
-  // Reverse to show the latest week at the top
-  return options.reverse()
+  
+  return options
 }
 
 // Backend calculation helper (Legacy support)
