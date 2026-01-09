@@ -216,15 +216,13 @@ export default function Dashboard() {
                   <label className="block text-sm font-semibold text-slate-900 mb-1">
                     Hygiene Score <Tooltip text="Rate your file management, naming conventions, and general discipline out of 10."/>
                   </label>
-                  <input type="number" min="0" max="10" step="0.5" required className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="7.5"
-                    value={general.hygiene_score ?? ""} onChange={e => setGeneral({...general, hygiene_score: e.target.value === "" ? "" : parseFloat(e.target.value)})} />
+                  <input type="number" min="0" max="10" step="0.5" placeholder="7.5" value={general.hygiene_score || ''} onChange={e => setGeneral({ ...general, hygiene_score: parseFloat(e.target.value) })} />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-900 mb-1">
                     Next Week Commitment <Tooltip text="How many reels/animations do you commit to deliver next week?"/>
                   </label>
-                  <input type="number" step="0.5" className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="10"
-                    value={general.next_week_commitment ?? ""} onChange={e => setGeneral({...general, next_week_commitment: e.target.value === "" ? "" : parseFloat(e.target.value)})} />
+                  <input type="number" step="0.5" placeholder="10" value={general.next_week_commitment || ''} onChange={e => setGeneral({ ...general, next_week_commitment: parseFloat(e.target.value) })} />
                 </div>
               </div>
 
