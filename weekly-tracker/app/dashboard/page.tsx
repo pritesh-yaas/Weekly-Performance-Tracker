@@ -35,7 +35,7 @@ interface IPItem {
 const Tooltip = ({ text }: { text: string }) => (
   <div className="group relative inline-block ml-1.5 align-middle">
     <Info size={14} className="text-slate-400 cursor-help hover:text-blue-500" />
-    <div className="invisible group-hover:visible absolute z-50 w-56 p-2.5 mt-2 -ml-28 text-xs leading-relaxed text-white bg-slate-800 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none text-center">
+    <div className="invisible group-hover:visible absolute z-50 w-64 p-2.5 mt-2 -ml-32 text-xs leading-relaxed text-white bg-slate-800 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none text-center">
       {text}
       <div className="absolute -top-1 left-1/2 -ml-1 border-4 border-transparent border-b-slate-800"></div>
     </div>
@@ -57,7 +57,7 @@ export default function Dashboard() {
   const [labels, setLabels] = useState({ weekLabel: '', monthLabel: '' })
   
   const [general, setGeneral] = useState({
-    hygiene_score: 10,
+    hygiene_score: 0,
     mistakes_repeated: "No",
     mistake_details: "",
     delays: "No",
@@ -208,7 +208,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Section 1: General */}
           <div>
             <h2 className="text-xl font-bold border-b border-slate-200 pb-2 mb-4 text-slate-800">1. General Questions</h2>
             <div className="space-y-6">
@@ -217,7 +216,6 @@ export default function Dashboard() {
                   <label className="block text-sm font-semibold text-slate-900 mb-1">
                     Hygiene Score <Tooltip text="Rate your file management, naming conventions, and general discipline out of 10."/>
                   </label>
-                  {/* UPDATED: Placeholder 7.5 */}
                   <input type="number" min="0" max="10" step="0.5" required className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="7.5"
                     value={general.hygiene_score} onChange={e => setGeneral({...general, hygiene_score: parseFloat(e.target.value)})} />
                 </div>
@@ -225,7 +223,6 @@ export default function Dashboard() {
                   <label className="block text-sm font-semibold text-slate-900 mb-1">
                     Next Week Commitment <Tooltip text="How many reels/animations do you commit to deliver next week?"/>
                   </label>
-                  {/* UPDATED: Placeholder 10 */}
                   <input type="number" step="0.5" className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="10"
                     value={general.next_week_commitment} onChange={e => setGeneral({...general, next_week_commitment: parseFloat(e.target.value)})} />
                 </div>
@@ -286,7 +283,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Section 2: IPs */}
           <div>
             <h2 className="text-xl font-bold border-b border-slate-200 pb-2 mb-4 mt-10 text-slate-800">2. Pod (IP) Related Questions</h2>
             
@@ -397,27 +393,29 @@ export default function Dashboard() {
 
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-semibold text-slate-900 mb-1">Creative Inputs</label>
-                        {/* UPDATED: Description */}
-                        <span className="text-xs text-slate-500 block mb-2">Provide inputs on hooks, pacing, or process improvements for this IP (Instagram/YouTube content).</span>
+                        {/* UPDATED: Tooltip */}
+                        <label className="block text-sm font-semibold text-slate-900 mb-1">
+                          Creative Inputs 
+                          <Tooltip text="Provide inputs on hooks, pacing, or process improvements for this IP (Instagram/YouTube content)." />
+                        </label>
                         <textarea className="w-full p-2.5 border border-slate-300 rounded-lg h-24 text-sm" value={item.creative_inputs} onChange={e => updateItem(idx, 'creative_inputs', e.target.value)} />
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-slate-900 mb-1">Improvements (This IP)</label>
-                        {/* UPDATED: Description */}
-                        <span className="text-xs text-slate-500 block mb-2">Any specific improvement made on this IP (not limited to just editing).</span>
+                        {/* UPDATED: Tooltip */}
+                        <label className="block text-sm font-semibold text-slate-900 mb-1">
+                          Improvements (This IP)
+                          <Tooltip text="Any specific improvement made on this IP (not limited to just editing)." />
+                        </label>
                         <textarea className="w-full p-2.5 border border-slate-300 rounded-lg h-24 text-sm" value={item.improvements} onChange={e => updateItem(idx, 'improvements', e.target.value)} />
                       </div>
                    </div>
                    
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div>
-                       {/* UPDATED: Tooltip */}
                        <label className="block text-sm font-semibold text-slate-900 mb-1">Avg Reiterations <Tooltip text="Average number of revision rounds per video."/></label>
                        <input type="number" step="0.1" className="w-full p-2.5 border border-slate-300 rounded-lg" value={item.avg_reiterations} onChange={e => updateItem(idx, 'avg_reiterations', parseFloat(e.target.value))} />
                      </div>
                      <div>
-                       {/* UPDATED: Tooltip */}
                        <label className="block text-sm font-semibold text-slate-900 mb-1">Manager Comments <Tooltip text="Feedback on your Channel Manager or Lead Editor."/></label>
                        <textarea className="w-full p-2.5 border border-slate-300 rounded-lg h-12 text-sm" value={item.manager_comments} onChange={e => updateItem(idx, 'manager_comments', e.target.value)} />
                      </div>
