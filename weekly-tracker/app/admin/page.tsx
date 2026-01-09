@@ -39,7 +39,15 @@ interface FlatRow {
   ip_name: string
   lead_editor: string
   channel_manager: string
-  reels_delivered: number
+  
+  // Updated Metrics
+  sf_daily: number
+  sf_daily_note: string
+  lf_daily: number
+  lf_daily_note: string
+  total_minutes: number
+  total_minutes_note: string
+  
   approved_reels: number
   creative_inputs: string
   has_blockers: string
@@ -56,31 +64,24 @@ export default function AdminDashboard() {
   const supabase = createClient()
   const router = useRouter()
   
-  // --- Global State ---
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'tracker' | 'data'>('tracker')
   const [registry, setRegistry] = useState<any[]>([])
   const [reports, setReports] = useState<any[]>([])
   
-  // --- Filter/Sort State ---
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [weekLabel, setWeekLabel] = useState('')
   const [globalSearch, setGlobalSearch] = useState('')
-  
-  // **NEW: Tracker Specific Filter**
   const [trackerStatusFilter, setTrackerStatusFilter] = useState<'all' | 'submitted' | 'missing'>('all')
 
-  // Data Sheet Specific State
   const [sortConfig, setSortConfig] = useState<{ key: keyof FlatRow; direction: 'asc' | 'desc' }>({ key: 'editor_name', direction: 'asc' })
   const [columnFilters, setColumnFilters] = useState<Partial<Record<keyof FlatRow, string>>>({})
 
-  // --- Modal State (History) ---
   const [selectedEditor, setSelectedEditor] = useState<Editor | null>(null)
   const [historyReports, setHistoryReports] = useState<any[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [historyDateRange, setHistoryDateRange] = useState({ start: '', end: '' })
 
-  // --- 1. Init ---
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -96,7 +97,6 @@ export default function AdminDashboard() {
     init()
   }, [])
 
-  // --- 2. Fetch Reports ---
   useEffect(() => {
     const fetchReports = async () => {
       const { weekLabel: w } = calculateWeekAndMonth(selectedDate)
@@ -107,27 +107,19 @@ export default function AdminDashboard() {
     fetchReports()
   }, [selectedDate])
 
-  // --- 3. Process Tracker Data (With Status Filter) ---
   const trackerData = useMemo(() => {
     return registry.map(editor => {
       const report = reports.find(r => r.editor_email === editor.email)
       return { ...editor, hasSubmitted: !!report }
     }).filter(e => {
-      // Search Filter
       const matchesSearch = e.name.toLowerCase().includes(globalSearch.toLowerCase()) || 
                             e.yaas_id.toLowerCase().includes(globalSearch.toLowerCase())
-      
-      // Status Filter
-      const matchesStatus = 
-        trackerStatusFilter === 'all' ? true :
-        trackerStatusFilter === 'submitted' ? e.hasSubmitted :
-        !e.hasSubmitted // missing
-
+      const matchesStatus = trackerStatusFilter === 'all' ? true :
+                            trackerStatusFilter === 'submitted' ? e.hasSubmitted : !e.hasSubmitted
       return matchesSearch && matchesStatus
     })
   }, [registry, reports, globalSearch, trackerStatusFilter])
 
-  // --- 4. Flatten Data for Table ---
   const rawFlatData: FlatRow[] = useMemo(() => {
     return reports.flatMap(r => {
       const ips = r.ip_data || []
@@ -138,7 +130,8 @@ export default function AdminDashboard() {
           hygiene_score: r.hygiene_score, mistakes_repeated: r.mistakes_repeated ? 'Yes' : 'No', mistake_details: r.mistake_details,
           delays: r.delays ? 'Yes' : 'No', delay_reasons: r.delay_reasons, general_improvements: r.general_improvements,
           next_week_commitment: r.next_week_commitment, areas_improvement: r.areas_improvement, overall_feedback: r.overall_feedback,
-          ip_name: '-', lead_editor: '-', channel_manager: '-', reels_delivered: 0, approved_reels: 0,
+          ip_name: '-', lead_editor: '-', channel_manager: '-', 
+          sf_daily: 0, sf_daily_note: '', lf_daily: 0, lf_daily_note: '', total_minutes: 0, total_minutes_note: '', approved_reels: 0,
           creative_inputs: '-', has_blockers: '-', blocker_details: '-', avg_reiterations: 0,
           has_qc_changes: '-', qc_details: '-', improvements: '-', drive_links: '', manager_comments: '-'
         }]
@@ -149,8 +142,17 @@ export default function AdminDashboard() {
         hygiene_score: r.hygiene_score, mistakes_repeated: r.mistakes_repeated ? 'Yes' : 'No', mistake_details: r.mistake_details,
         delays: r.delays ? 'Yes' : 'No', delay_reasons: r.delay_reasons, general_improvements: r.general_improvements,
         next_week_commitment: r.next_week_commitment, areas_improvement: r.areas_improvement, overall_feedback: r.overall_feedback,
+        
         ip_name: ip.ip_name, lead_editor: ip.lead_editor, channel_manager: ip.channel_manager,
-        reels_delivered: ip.reels_delivered || 0, approved_reels: ip.approved_reels || 0,
+        
+        sf_daily: ip.sf_daily || 0,
+        sf_daily_note: ip.sf_daily_note || '',
+        lf_daily: ip.lf_daily || 0,
+        lf_daily_note: ip.lf_daily_note || '',
+        total_minutes: ip.total_minutes || 0,
+        total_minutes_note: ip.total_minutes_note || '',
+        
+        approved_reels: ip.approved_reels || 0,
         creative_inputs: ip.creative_inputs, has_blockers: ip.has_blockers, blocker_details: ip.blocker_details,
         avg_reiterations: ip.avg_reiterations || 0, has_qc_changes: ip.has_qc_changes, qc_details: ip.qc_details,
         improvements: ip.improvements, drive_links: ip.drive_links, manager_comments: ip.manager_comments
@@ -158,7 +160,6 @@ export default function AdminDashboard() {
     })
   }, [reports])
 
-  // --- 5. Filtering & Sorting Logic (Table) ---
   const processedTableData = useMemo(() => {
     let data = [...rawFlatData]
     if (globalSearch) {
@@ -184,7 +185,6 @@ export default function AdminDashboard() {
     return data
   }, [rawFlatData, globalSearch, sortConfig, columnFilters])
 
-  // --- 6. Grouping Logic ---
   const isGrouped = ['editor_name', 'yaas_id', 'submission_date'].includes(sortConfig.key)
   const getRowSpan = (row: FlatRow, index: number, data: FlatRow[]) => {
     if (!isGrouped) return 1
@@ -199,13 +199,8 @@ export default function AdminDashboard() {
     return 0
   }
 
-  // --- Handlers ---
   const handleSort = (key: keyof FlatRow) => {
     setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }))
-  }
-  const applyColumnFilter = (key: keyof FlatRow, value: string) => {
-    setColumnFilters(prev => ({ ...prev, [key]: value }))
-    setViewMode('data')
   }
   const clearFilters = () => {
     setGlobalSearch('')
@@ -229,7 +224,6 @@ export default function AdminDashboard() {
     if (selectedEditor) openEditorHistory(selectedEditor.email, selectedEditor.name, selectedEditor.yaas_id)
   }, [historyDateRange])
 
-  // --- Render Helpers ---
   const renderHeader = (label: string, key: keyof FlatRow, width: string = 'w-auto') => (
     <th className={`p-3 border text-xs font-bold text-slate-700 bg-slate-50 sticky top-0 z-10 select-none group ${width}`}>
       <div className="flex items-center gap-1 cursor-pointer hover:text-blue-600" onClick={() => handleSort(key)}>
@@ -264,9 +258,37 @@ export default function AdminDashboard() {
   const renderCellValue = (row: FlatRow, key: keyof FlatRow) => {
     const val = row[key]
     if (key === 'editor_name') return <button onClick={() => openEditorHistory(row.editor_email, row.editor_name, row.yaas_id)} className="font-bold text-slate-800 hover:text-blue-600 hover:underline text-left">{val}</button>
-    if (key === 'ip_name') return <button onClick={() => applyColumnFilter('ip_name', String(val))} className="font-medium text-blue-700 hover:underline text-left">{val}</button>
-    if (key === 'drive_links' && val) return <span title={String(val)} className="text-blue-500 cursor-pointer text-[10px]">View Links</span>
-    if (key === 'approved_reels') return val
+    if (key === 'ip_name') return <button onClick={() => setColumnFilters(prev => ({...prev, ip_name: String(val)}))} className="font-medium text-blue-700 hover:underline text-left">{val}</button>
+    
+    // Parse Links
+    if (key === 'drive_links' && val) {
+      const links = String(val).match(/\bhttps?:\/\/\S+/gi);
+      if (links && links.length > 0) {
+         return (
+           <div className="flex flex-col gap-1">
+             {links.map((link, i) => (
+               <a key={i} href={link} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-[10px] block truncate max-w-[100px]" onClick={e => e.stopPropagation()}>
+                 Link {i+1}
+               </a>
+             ))}
+           </div>
+         )
+      }
+      return <span className="text-slate-400 text-[10px] italic">No Links</span>
+    }
+
+    // Number + Note Fields
+    if (['sf_daily', 'lf_daily', 'total_minutes'].includes(key as string)) {
+        const noteKey = key + '_note'
+        const note = (row as any)[noteKey]
+        return (
+          <div>
+            <span className="font-bold">{val}</span>
+            {note && <span className="block text-[9px] text-slate-500 bg-yellow-50 p-0.5 rounded truncate max-w-[80px]" title={note}>{note}</span>}
+          </div>
+        )
+    }
+
     return <span className="truncate block max-w-[200px]" title={String(val)}>{val}</span>
   }
 
@@ -360,7 +382,6 @@ export default function AdminDashboard() {
             <table className="w-full text-xs text-left border-collapse whitespace-nowrap">
               <thead className="bg-slate-50">
                  <tr>
-                    {/* General Columns */}
                     {renderHeader('Timestamp', 'submission_date')}
                     {renderHeader('Name', 'editor_name')}
                     {renderHeader('ID', 'yaas_id')}
@@ -378,7 +399,12 @@ export default function AdminDashboard() {
                     {renderHeader('IP Name', 'ip_name', 'bg-blue-50 text-blue-900')}
                     {renderHeader('Lead', 'lead_editor', 'bg-blue-50 text-blue-900')}
                     {renderHeader('Manager', 'channel_manager', 'bg-blue-50 text-blue-900')}
-                    {renderHeader('Delivered', 'reels_delivered', 'bg-blue-50 text-blue-900')}
+                    
+                    {/* NEW HEADERS */}
+                    {renderHeader('SF Daily', 'sf_daily', 'bg-blue-50 text-blue-900')}
+                    {renderHeader('LF Daily', 'lf_daily', 'bg-blue-50 text-blue-900')}
+                    {renderHeader('Total Mins', 'total_minutes', 'bg-blue-50 text-blue-900')}
+                    
                     {renderHeader('Approved', 'approved_reels', 'bg-blue-50 text-blue-900')}
                     {renderHeader('Creative', 'creative_inputs', 'bg-blue-50 text-blue-900 min-w-[150px]')}
                     {renderHeader('Blockers?', 'has_blockers', 'bg-blue-50 text-blue-900')}
@@ -411,7 +437,12 @@ export default function AdminDashboard() {
                     {renderCell(row, i, 'ip_name', processedTableData, false)}
                     {renderCell(row, i, 'lead_editor', processedTableData, false)}
                     {renderCell(row, i, 'channel_manager', processedTableData, false)}
-                    {renderCell(row, i, 'reels_delivered', processedTableData, false)}
+                    
+                    {/* NEW CELLS */}
+                    {renderCell(row, i, 'sf_daily', processedTableData, false)}
+                    {renderCell(row, i, 'lf_daily', processedTableData, false)}
+                    {renderCell(row, i, 'total_minutes', processedTableData, false)}
+                    
                     {renderCell(row, i, 'approved_reels', processedTableData, false)}
                     {renderCell(row, i, 'creative_inputs', processedTableData, false)}
                     {renderCell(row, i, 'has_blockers', processedTableData, false)}
@@ -473,7 +504,7 @@ export default function AdminDashboard() {
                                <div className="flex flex-wrap gap-2">
                                   {r.ip_data && r.ip_data.map((ip: any, i: number) => (
                                      <span key={i} className="bg-slate-100 px-2 py-1 rounded text-xs border">
-                                        {ip.ip_name} ({ip.reels_delivered}/{ip.approved_reels})
+                                        {ip.ip_name}
                                      </span>
                                   ))}
                                </div>
