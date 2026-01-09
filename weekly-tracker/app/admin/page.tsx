@@ -2,7 +2,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { calculateWeekAndMonth, getWeekOptions } from '@/lib/utils' // Import dropdown helper
+import { calculateWeekAndMonth, getWeekRangeDisplay } from '@/lib/utils'
 import { 
   Calendar, Search, LayoutList, Table2, 
   CheckCircle, XCircle, Filter, ArrowUpDown, 
@@ -68,11 +68,8 @@ export default function AdminDashboard() {
   const [registry, setRegistry] = useState<any[]>([])
   const [reports, setReports] = useState<any[]>([])
   
-  // Week Selection
-  const weekOptions = getWeekOptions()
-  const [selectedDateValue, setSelectedDateValue] = useState(weekOptions[0].value)
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [weekLabel, setWeekLabel] = useState('')
-  
   const [globalSearch, setGlobalSearch] = useState('')
   const [trackerStatusFilter, setTrackerStatusFilter] = useState<'all' | 'submitted' | 'missing'>('all')
 
@@ -101,13 +98,13 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const fetchReports = async () => {
-      const { weekLabel: w } = calculateWeekAndMonth(selectedDateValue)
+      const { weekLabel: w } = calculateWeekAndMonth(selectedDate)
       setWeekLabel(w)
       const { data } = await supabase.from('reports').select('*').eq('week_label', w)
       if (data) setReports(data)
     }
     fetchReports()
-  }, [selectedDateValue])
+  }, [selectedDate])
 
   const trackerData = useMemo(() => {
     return registry.map(editor => {
@@ -126,7 +123,6 @@ export default function AdminDashboard() {
     return reports.flatMap(r => {
       const ips = r.ip_data || []
       if (ips.length === 0) {
-        // Return dummy row if no IPs
         return [{
           uniqueId: r.id + '_0', reportId: r.id,
           submission_date: r.submission_date, editor_name: r.editor_name, yaas_id: r.yaas_id, editor_email: r.editor_email,
@@ -147,9 +143,14 @@ export default function AdminDashboard() {
         next_week_commitment: r.next_week_commitment, areas_improvement: r.areas_improvement, overall_feedback: r.overall_feedback,
         
         ip_name: ip.ip_name, lead_editor: ip.lead_editor, channel_manager: ip.channel_manager,
-        sf_daily: ip.sf_daily || 0, sf_daily_note: ip.sf_daily_note || '',
-        lf_daily: ip.lf_daily || 0, lf_daily_note: ip.lf_daily_note || '',
-        total_minutes: ip.total_minutes || 0, total_minutes_note: ip.total_minutes_note || '',
+        
+        sf_daily: ip.sf_daily || 0,
+        sf_daily_note: ip.sf_daily_note || '',
+        lf_daily: ip.lf_daily || 0,
+        lf_daily_note: ip.lf_daily_note || '',
+        total_minutes: ip.total_minutes || 0,
+        total_minutes_note: ip.total_minutes_note || '',
+        
         approved_reels: ip.approved_reels || 0,
         creative_inputs: ip.creative_inputs, has_blockers: ip.has_blockers, blocker_details: ip.blocker_details,
         avg_reiterations: ip.avg_reiterations || 0, has_qc_changes: ip.has_qc_changes, qc_details: ip.qc_details,
@@ -258,7 +259,7 @@ export default function AdminDashboard() {
     if (key === 'editor_name') return <button onClick={() => openEditorHistory(row.editor_email, row.editor_name, row.yaas_id)} className="font-bold text-slate-800 hover:text-blue-600 hover:underline text-left">{val}</button>
     if (key === 'ip_name') return <button onClick={() => setColumnFilters(prev => ({...prev, ip_name: String(val)}))} className="font-medium text-blue-700 hover:underline text-left">{val}</button>
     
-    // Parse Links (handle newlines)
+    // Parse Links
     if (key === 'drive_links' && val) {
       const links = String(val).match(/\bhttps?:\/\/\S+/gi);
       if (links && links.length > 0) {
@@ -305,18 +306,18 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex flex-wrap gap-3 items-center bg-white p-2 rounded-xl shadow-sm border">
-           {/* Week Selector */}
+           {/* Date Picker + Range Display */}
            <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-lg border">
              <Calendar size={16} className="text-blue-600"/>
-             <select 
-                 value={selectedDateValue} 
-                 onChange={e => setSelectedDateValue(e.target.value)} 
-                 className="bg-transparent outline-none text-sm font-medium cursor-pointer"
-               >
-                 {weekOptions.map(opt => (
-                   <option key={opt.value} value={opt.value}>{opt.label}</option>
-                 ))}
-             </select>
+             <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} 
+               className="bg-transparent outline-none text-sm font-medium cursor-pointer" />
+             
+             <div className="h-4 w-[1px] bg-slate-300 mx-1"></div>
+             
+             {/* Dynamic Range Text */}
+             <span className="text-xs font-bold text-slate-600 whitespace-nowrap">
+               {getWeekRangeDisplay(selectedDate)}
+             </span>
            </div>
 
            <div className="w-[1px] h-6 bg-slate-200 hidden md:block"></div>
@@ -500,12 +501,25 @@ export default function AdminDashboard() {
                                <span className="block text-xs font-bold text-slate-400 mb-2">IPS WORKED ON</span>
                                <div className="space-y-2">
                                   {r.ip_data && r.ip_data.map((ip: any, i: number) => (
-                                     <div key={i} className="bg-slate-50 p-2 rounded border text-xs flex justify-between items-center">
-                                        <span className="font-bold text-slate-700">{ip.ip_name}</span>
-                                        <div className="flex gap-2">
-                                          {ip.sf_daily > 0 && <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">SF: {ip.sf_daily}</span>}
-                                          {ip.lf_daily > 0 && <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded">LF: {ip.lf_daily}</span>}
-                                          {ip.total_minutes > 0 && <span className="bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded">{ip.total_minutes}m</span>}
+                                     <div key={i} className="bg-slate-50 p-3 rounded border text-xs flex flex-col gap-2">
+                                        <div className="font-bold text-slate-800 text-sm">{ip.ip_name}</div>
+                                        <div className="flex flex-wrap gap-2">
+                                          {/* Detailed Metric Badges */}
+                                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium border border-blue-200">
+                                            SF Daily: {ip.sf_daily || 0}
+                                            {ip.sf_daily_note && <span className="block text-[9px] opacity-75">{ip.sf_daily_note}</span>}
+                                          </span>
+                                          <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded font-medium border border-purple-200">
+                                            LF Daily: {ip.lf_daily || 0}
+                                            {ip.lf_daily_note && <span className="block text-[9px] opacity-75">{ip.lf_daily_note}</span>}
+                                          </span>
+                                          <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded font-medium border border-orange-200">
+                                            Total: {ip.total_minutes || 0}m
+                                            {ip.total_minutes_note && <span className="block text-[9px] opacity-75">{ip.total_minutes_note}</span>}
+                                          </span>
+                                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded font-medium border border-green-200">
+                                            Approved: {ip.approved_reels || 0}
+                                          </span>
                                         </div>
                                      </div>
                                   ))}

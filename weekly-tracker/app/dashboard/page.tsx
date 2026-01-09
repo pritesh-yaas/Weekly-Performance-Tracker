@@ -2,8 +2,8 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { calculateWeekAndMonth, getWeekOptions } from '@/lib/utils'
-import { Plus, X, LogOut, Info } from 'lucide-react'
+import { calculateWeekAndMonth, getWeekRangeDisplay } from '@/lib/utils'
+import { Plus, X, LogOut, Info, Calendar } from 'lucide-react'
 
 // --- Types ---
 interface IPItem {
@@ -12,16 +12,13 @@ interface IPItem {
   lead_editor: string
   channel_manager: string
   
-  // New Metric Fields
+  // Metric Fields
   sf_daily: number
   sf_daily_note: string
-  
   lf_daily: number
   lf_daily_note: string
-  
   total_minutes: number
   total_minutes_note: string
-
   approved_reels: number
   
   creative_inputs: string
@@ -58,9 +55,8 @@ export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
   const [editorInfo, setEditorInfo] = useState({ name: '', email: '', yaas_id: '' })
 
-  // Week Selection Logic
-  const weekOptions = getWeekOptions()
-  const [selectedDateValue, setSelectedDateValue] = useState(weekOptions[0].value) // Default to latest
+  // Date Logic
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [labels, setLabels] = useState({ weekLabel: '', monthLabel: '' })
   
   const [general, setGeneral] = useState({
@@ -103,10 +99,10 @@ export default function Dashboard() {
     init()
   }, [])
 
-  // Calc labels whenever dropdown changes
+  // Calc labels whenever date changes
   useEffect(() => {
-    setLabels(calculateWeekAndMonth(selectedDateValue))
-  }, [selectedDateValue])
+    setLabels(calculateWeekAndMonth(date))
+  }, [date])
 
   const addTab = () => {
     setItems([...items, {
@@ -149,7 +145,7 @@ export default function Dashboard() {
       const { error } = await supabase.from('reports').insert({
         user_id: user.id,
         editor_name: editorInfo.name, editor_email: editorInfo.email, yaas_id: editorInfo.yaas_id,
-        submission_date: selectedDateValue, 
+        submission_date: date, 
         week_label: labels.weekLabel, month_label: labels.monthLabel,
         
         hygiene_score: general.hygiene_score,
@@ -196,18 +192,21 @@ export default function Dashboard() {
               <label className="block text-sm font-semibold mb-1 text-slate-700">YAAS ID</label>
               <input value={editorInfo.yaas_id} disabled className="w-full p-2 border border-slate-300 rounded bg-slate-100 font-bold text-blue-800" />
             </div>
+             
+             {/* DATE PICKER + WEEK BADGE */}
              <div>
-               <label className="block text-sm font-semibold mb-1 text-slate-700">Select Week</label>
-               <select 
-                 value={selectedDateValue} 
-                 onChange={e => setSelectedDateValue(e.target.value)} 
-                 className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none font-medium bg-white cursor-pointer"
-               >
-                 {weekOptions.map(opt => (
-                   <option key={opt.value} value={opt.value}>{opt.label}</option>
-                 ))}
-               </select>
+               <label className="block text-sm font-semibold mb-1 text-slate-700">Select Date</label>
+               <div className="relative">
+                 <Calendar size={16} className="absolute left-3 top-3 text-slate-400" />
+                 <input type="date" required value={date} onChange={e => setDate(e.target.value)} 
+                   className="w-full pl-10 p-2 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none font-medium cursor-pointer" />
+               </div>
+               <div className="mt-2 text-xs font-bold text-blue-600 bg-blue-50 p-2 rounded border border-blue-100 flex justify-between items-center">
+                 <span>{labels.weekLabel}</span>
+                 <span className="text-slate-500 font-normal">{getWeekRangeDisplay(date)}</span>
+               </div>
             </div>
+
             <div>
               <label className="block text-sm font-semibold mb-1 text-slate-700">Name</label>
               <input value={editorInfo.name} disabled className="w-full p-2 border border-slate-300 rounded bg-slate-100 text-slate-600" />
@@ -288,7 +287,7 @@ export default function Dashboard() {
                   </div>
                   <div>
                      <label className="block text-sm font-semibold text-slate-900 mb-1">Overall Feedback</label>
-                     <textarea className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none min-h-[80px]"
+                     <textarea className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px]"
                        placeholder="Thoughts on performance, team dynamics..." value={general.overall_feedback} onChange={e => setGeneral({...general, overall_feedback: e.target.value})} />
                   </div>
                 </div>

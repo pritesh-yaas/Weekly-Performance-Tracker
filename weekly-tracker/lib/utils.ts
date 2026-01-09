@@ -5,48 +5,32 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// Generate a clean list of the last 20 weeks (Descending)
-export function getWeekOptions() {
-  const options = []
-  const today = new Date()
+// Helper: Get readable date range (Mon - Sun) for a specific date
+export function getWeekRangeDisplay(dateStr: string) {
+  if (!dateStr) return ""
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return ""
   
-  // 1. Find the Monday of the CURRENT week
-  const currentMonday = new Date(today)
-  const day = currentMonday.getDay()
-  const diff = currentMonday.getDate() - day + (day === 0 ? -6 : 1) // adjust when day is sunday
-  currentMonday.setDate(diff)
-  currentMonday.setHours(0, 0, 0, 0)
-
-  // 2. Generate past 20 weeks
-  for (let i = 0; i < 20; i++) {
-    const start = new Date(currentMonday)
-    start.setDate(currentMonday.getDate() - (i * 7))
-    
-    const end = new Date(start)
-    end.setDate(start.getDate() + 6)
-    
-    // Calculate Week Number logic
-    const d = new Date(start)
-    d.setDate(d.getDate() + 3) // Move to Thursday to gauge the week number
-    const yearStart = new Date(d.getFullYear(), 0, 1)
-    const weekNo = Math.ceil((((d.valueOf() - yearStart.valueOf()) / 86400000) + 1) / 7)
-    
-    const label = `Week ${weekNo} (${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`
-    
-    // Value: We use the Thursday of that week to be safe for backend calculation
-    const value = d.toISOString().split('T')[0]
-    
-    options.push({ label, value })
-  }
+  // Find Monday
+  const day = date.getDay()
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1) // adjust when day is sunday
+  const start = new Date(date)
+  start.setDate(diff)
   
-  return options
+  // Find Sunday
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6)
+  
+  return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
 }
 
-// Backend calculation helper (Legacy support)
+// Backend calculation helper (Legacy support + Database Logic)
 export function calculateWeekAndMonth(dateStr: string) {
   if (!dateStr) return { weekLabel: '', monthLabel: '' };
   
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return { weekLabel: '', monthLabel: '' };
+
   const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const monthLabel = months[date.getMonth()];
 
