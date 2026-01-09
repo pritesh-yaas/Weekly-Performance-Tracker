@@ -21,7 +21,6 @@ interface Editor {
 interface FlatRow {
   uniqueId: string
   reportId: string
-  // General Data
   submission_date: string
   editor_name: string
   yaas_id: string
@@ -35,18 +34,15 @@ interface FlatRow {
   next_week_commitment: number
   areas_improvement: string
   overall_feedback: string
-  // IP Data
   ip_name: string
   lead_editor: string
   channel_manager: string
-  
   sf_daily: number
   sf_daily_note: string
   lf_daily: number
   lf_daily_note: string
   total_minutes: number
   total_minutes_note: string
-  
   approved_reels: number
   creative_inputs: string
   has_blockers: string
@@ -135,27 +131,33 @@ export default function AdminDashboard() {
           has_qc_changes: '-', qc_details: '-', improvements: '-', drive_links: '', manager_comments: '-'
         }]
       }
-      return ips.map((ip: any, idx: number) => ({
-        uniqueId: r.id + '_' + idx, reportId: r.id,
-        submission_date: r.submission_date, editor_name: r.editor_name, yaas_id: r.yaas_id, editor_email: r.editor_email,
-        hygiene_score: r.hygiene_score, mistakes_repeated: r.mistakes_repeated ? 'Yes' : 'No', mistake_details: r.mistake_details,
-        delays: r.delays ? 'Yes' : 'No', delay_reasons: r.delay_reasons, general_improvements: r.general_improvements,
-        next_week_commitment: r.next_week_commitment, areas_improvement: r.areas_improvement, overall_feedback: r.overall_feedback,
-        
-        ip_name: ip.ip_name, lead_editor: ip.lead_editor, channel_manager: ip.channel_manager,
-        
-        sf_daily: ip.sf_daily || 0,
-        sf_daily_note: ip.sf_daily_note || '',
-        lf_daily: ip.lf_daily || 0,
-        lf_daily_note: ip.lf_daily_note || '',
-        total_minutes: ip.total_minutes || 0,
-        total_minutes_note: ip.total_minutes_note || '',
-        
-        approved_reels: ip.approved_reels || 0,
-        creative_inputs: ip.creative_inputs, has_blockers: ip.has_blockers, blocker_details: ip.blocker_details,
-        avg_reiterations: ip.avg_reiterations || 0, has_qc_changes: ip.has_qc_changes, qc_details: ip.qc_details,
-        improvements: ip.improvements, drive_links: ip.drive_links, manager_comments: ip.manager_comments
-      }))
+      return ips.map((ip: any, idx: number) => {
+        // --- BACKWARD COMPATIBILITY: Map old 'reels_delivered' to 'sf_daily' ---
+        const effectiveSF = ip.sf_daily !== undefined ? ip.sf_daily : (ip.reels_delivered || 0)
+        const effectiveSFNote = ip.sf_daily_note || (ip.reels_delivered !== undefined ? '(Legacy)' : '')
+
+        return {
+          uniqueId: r.id + '_' + idx, reportId: r.id,
+          submission_date: r.submission_date, editor_name: r.editor_name, yaas_id: r.yaas_id, editor_email: r.editor_email,
+          hygiene_score: r.hygiene_score, mistakes_repeated: r.mistakes_repeated ? 'Yes' : 'No', mistake_details: r.mistake_details,
+          delays: r.delays ? 'Yes' : 'No', delay_reasons: r.delay_reasons, general_improvements: r.general_improvements,
+          next_week_commitment: r.next_week_commitment, areas_improvement: r.areas_improvement, overall_feedback: r.overall_feedback,
+          
+          ip_name: ip.ip_name, lead_editor: ip.lead_editor, channel_manager: ip.channel_manager,
+          
+          sf_daily: effectiveSF,
+          sf_daily_note: effectiveSFNote,
+          lf_daily: ip.lf_daily || 0,
+          lf_daily_note: ip.lf_daily_note || '',
+          total_minutes: ip.total_minutes || 0,
+          total_minutes_note: ip.total_minutes_note || '',
+          
+          approved_reels: ip.approved_reels || 0,
+          creative_inputs: ip.creative_inputs, has_blockers: ip.has_blockers, blocker_details: ip.blocker_details,
+          avg_reiterations: ip.avg_reiterations || 0, has_qc_changes: ip.has_qc_changes, qc_details: ip.qc_details,
+          improvements: ip.improvements, drive_links: ip.drive_links, manager_comments: ip.manager_comments
+        }
+      })
     })
   }, [reports])
 
@@ -306,15 +308,13 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex flex-wrap gap-3 items-center bg-white p-2 rounded-xl shadow-sm border">
-           {/* Date Picker + Range Display */}
+           
+           {/* Date Picker */}
            <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-lg border">
              <Calendar size={16} className="text-blue-600"/>
              <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} 
                className="bg-transparent outline-none text-sm font-medium cursor-pointer" />
-             
              <div className="h-4 w-[1px] bg-slate-300 mx-1"></div>
-             
-             {/* Dynamic Range Text */}
              <span className="text-xs font-bold text-slate-600 whitespace-nowrap">
                {getWeekRangeDisplay(selectedDate)}
              </span>
@@ -500,29 +500,31 @@ export default function AdminDashboard() {
                             <div className="col-span-2">
                                <span className="block text-xs font-bold text-slate-400 mb-2">IPS WORKED ON</span>
                                <div className="space-y-2">
-                                  {r.ip_data && r.ip_data.map((ip: any, i: number) => (
-                                     <div key={i} className="bg-slate-50 p-3 rounded border text-xs flex flex-col gap-2">
-                                        <div className="font-bold text-slate-800 text-sm">{ip.ip_name}</div>
-                                        <div className="flex flex-wrap gap-2">
-                                          {/* Detailed Metric Badges */}
-                                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium border border-blue-200">
-                                            SF Daily: {ip.sf_daily || 0}
-                                            {ip.sf_daily_note && <span className="block text-[9px] opacity-75">{ip.sf_daily_note}</span>}
-                                          </span>
-                                          <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded font-medium border border-purple-200">
-                                            LF Daily: {ip.lf_daily || 0}
-                                            {ip.lf_daily_note && <span className="block text-[9px] opacity-75">{ip.lf_daily_note}</span>}
-                                          </span>
-                                          <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded font-medium border border-orange-200">
-                                            Total: {ip.total_minutes || 0}m
-                                            {ip.total_minutes_note && <span className="block text-[9px] opacity-75">{ip.total_minutes_note}</span>}
-                                          </span>
-                                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded font-medium border border-green-200">
-                                            Approved: {ip.approved_reels || 0}
-                                          </span>
-                                        </div>
-                                     </div>
-                                  ))}
+                                  {r.ip_data && r.ip_data.map((ip: any, i: number) => {
+                                     // BACKWARD COMPATIBILITY FOR HISTORY MODAL TOO
+                                     const sf = ip.sf_daily !== undefined ? ip.sf_daily : (ip.reels_delivered || 0)
+                                     const note = ip.sf_daily_note || (ip.reels_delivered !== undefined ? '(Legacy)' : '')
+                                     
+                                     return (
+                                       <div key={i} className="bg-slate-50 p-3 rounded border text-xs flex flex-col gap-2">
+                                          <div className="font-bold text-slate-800 text-sm">{ip.ip_name}</div>
+                                          <div className="flex flex-wrap gap-2">
+                                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium border border-blue-200">
+                                              SF Daily: {sf} {note}
+                                            </span>
+                                            <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded font-medium border border-purple-200">
+                                              LF Daily: {ip.lf_daily || 0} {ip.lf_daily_note}
+                                            </span>
+                                            <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded font-medium border border-orange-200">
+                                              Total: {ip.total_minutes || 0}m {ip.total_minutes_note}
+                                            </span>
+                                            <span className="bg-green-100 text-green-800 px-2 py-1 rounded font-medium border border-green-200">
+                                              Approved: {ip.approved_reels || 0}
+                                            </span>
+                                          </div>
+                                       </div>
+                                     )
+                                  })}
                                </div>
                             </div>
                          </div>

@@ -24,7 +24,7 @@ export function getWeekRangeDisplay(dateStr: string) {
   return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
 }
 
-// Backend calculation helper (Legacy support + Database Logic)
+// Backend calculation helper
 export function calculateWeekAndMonth(dateStr: string) {
   if (!dateStr) return { weekLabel: '', monthLabel: '' };
   

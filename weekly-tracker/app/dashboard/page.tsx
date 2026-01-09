@@ -12,7 +12,6 @@ interface IPItem {
   lead_editor: string
   channel_manager: string
   
-  // Metric Fields
   sf_daily: number
   sf_daily_note: string
   lf_daily: number
@@ -51,11 +50,9 @@ export default function Dashboard() {
   const [submitting, setSubmitting] = useState(false)
   const [ipOptions, setIpOptions] = useState<string[]>([])
   
-  // User Data
   const [user, setUser] = useState<any>(null)
   const [editorInfo, setEditorInfo] = useState({ name: '', email: '', yaas_id: '' })
 
-  // Date Logic
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [labels, setLabels] = useState({ weekLabel: '', monthLabel: '' })
   
@@ -99,7 +96,6 @@ export default function Dashboard() {
     init()
   }, [])
 
-  // Calc labels whenever date changes
   useEffect(() => {
     setLabels(calculateWeekAndMonth(date))
   }, [date])
@@ -108,12 +104,10 @@ export default function Dashboard() {
     setItems([...items, {
       id: Math.random().toString(36),
       ip_name: "", lead_editor: "", channel_manager: "",
-      
       sf_daily: 0, sf_daily_note: "",
       lf_daily: 0, lf_daily_note: "",
       total_minutes: 0, total_minutes_note: "",
       approved_reels: 0,
-      
       creative_inputs: "", has_blockers: "No", blocker_details: "", avg_reiterations: 0,
       has_qc_changes: "No", qc_details: "", improvements: "",
       drive_links: "", manager_comments: ""
@@ -147,13 +141,11 @@ export default function Dashboard() {
         editor_name: editorInfo.name, editor_email: editorInfo.email, yaas_id: editorInfo.yaas_id,
         submission_date: date, 
         week_label: labels.weekLabel, month_label: labels.monthLabel,
-        
         hygiene_score: general.hygiene_score,
         mistakes_repeated: general.mistakes_repeated === 'Yes', mistake_details: general.mistake_details,
         delays: general.delays === 'Yes', delay_reasons: general.delay_reasons,
         general_improvements: general.general_improvements, next_week_commitment: general.next_week_commitment,
         areas_improvement: general.areas_improvement, overall_feedback: general.overall_feedback,
-        
         ip_data: items
       })
 
@@ -173,7 +165,6 @@ export default function Dashboard() {
     <div className="min-h-screen bg-slate-50 py-10 px-4 font-sans text-slate-800">
       <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border-t-4 border-blue-600 p-8">
         
-        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Weekly Performance Report</h1>
@@ -186,14 +177,12 @@ export default function Dashboard() {
 
         <form onSubmit={handleSubmit} className="space-y-8">
           
-          {/* User Info Block */}
           <div className="bg-slate-50 p-6 rounded-lg border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-semibold mb-1 text-slate-700">YAAS ID</label>
               <input value={editorInfo.yaas_id} disabled className="w-full p-2 border border-slate-300 rounded bg-slate-100 font-bold text-blue-800" />
             </div>
              
-             {/* DATE PICKER + WEEK BADGE */}
              <div>
                <label className="block text-sm font-semibold mb-1 text-slate-700">Select Date</label>
                <div className="relative">
@@ -217,7 +206,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Section 1: General */}
           <div>
             <h2 className="text-xl font-bold border-b border-slate-200 pb-2 mb-4 text-slate-800">1. General Questions</h2>
             <div className="space-y-6">
@@ -238,7 +226,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Mistakes & Delays */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <div>
                     <label className="block text-sm font-semibold text-slate-900 mb-2">Mistakes Repeated?</label>
@@ -272,7 +259,6 @@ export default function Dashboard() {
                  </div>
               </div>
 
-              {/* Text Areas */}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-slate-900 mb-1">General Improvements</label>
@@ -295,7 +281,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Section 2: IPs */}
           <div>
             <h2 className="text-xl font-bold border-b border-slate-200 pb-2 mb-4 mt-10 text-slate-800">2. Pod (IP) Related Questions</h2>
             
@@ -314,7 +299,6 @@ export default function Dashboard() {
               {items.map((item, idx) => (
                 <div key={item.id} className={activeTab === idx ? 'block space-y-6' : 'hidden'}>
                   
-                  {/* IP Select */}
                   <div>
                     <label className="block text-sm font-semibold text-slate-800">IP Name / Channel</label>
                     <select required className="w-full p-2.5 border border-slate-300 rounded mt-1" value={item.ip_name} onChange={e => updateItem(idx, 'ip_name', e.target.value)}>
@@ -328,12 +312,10 @@ export default function Dashboard() {
                     <div><label className="block text-sm font-semibold text-slate-800">Channel Manager</label><input type="text" className="w-full p-2.5 border rounded" value={item.channel_manager} onChange={e => updateItem(idx, 'channel_manager', e.target.value)} /></div>
                   </div>
 
-                  {/* NEW METRICS SECTION */}
                   <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                     <h3 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wide">Output Metrics</h3>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                      {/* SF Daily */}
                       <div>
                         <label className="block text-sm font-semibold text-slate-800 mb-1">
                           SF - Reels per Day <Tooltip text="Average number of short-form reels completed per working day." />
@@ -346,7 +328,6 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      {/* LF Daily */}
                       <div>
                         <label className="block text-sm font-semibold text-slate-800 mb-1">
                           LF - Minutes per Day <Tooltip text="Average minutes of Long Form content edited per day." />
@@ -361,7 +342,6 @@ export default function Dashboard() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Total Minutes */}
                       <div>
                         <label className="block text-sm font-semibold text-slate-800 mb-1">
                           Total Minutes Edited <Tooltip text="Total runtime of all videos approved this week." />
@@ -374,7 +354,6 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      {/* Approved Count */}
                       <div>
                         <label className="block text-sm font-semibold text-slate-800 mb-1">
                           Total Approved Videos <Tooltip text="Total count of videos (SF + LF) fully approved this week." />
@@ -385,7 +364,6 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  {/* Links & Blockers */}
                   <div>
                      <label className="block text-sm font-semibold text-slate-900 mb-1">Drive Links</label>
                      <textarea className="w-full p-2.5 border border-slate-300 rounded-lg h-24 font-mono text-sm" placeholder="Paste links here..." value={item.drive_links} onChange={e => updateItem(idx, 'drive_links', e.target.value)} />
