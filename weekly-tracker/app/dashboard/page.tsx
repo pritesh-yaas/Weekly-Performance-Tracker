@@ -31,6 +31,19 @@ interface IPItem {
   manager_comments: string
 }
 
+// Define General Data Type to allow number OR string (for empty state)
+interface GeneralData {
+  hygiene_score: number | string
+  mistakes_repeated: string
+  mistake_details: string
+  delays: string
+  delay_reasons: string
+  general_improvements: string
+  next_week_commitment: number | string
+  areas_improvement: string
+  overall_feedback: string
+}
+
 // --- Tooltip Component ---
 const Tooltip = ({ text }: { text: string }) => (
   <div className="group relative inline-block ml-1.5 align-middle">
@@ -56,8 +69,9 @@ export default function Dashboard() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [labels, setLabels] = useState({ weekLabel: '', monthLabel: '' })
   
-  const [general, setGeneral] = useState({
-    hygiene_score: "",
+  // Initialize with empty strings so Placeholders show up
+  const [general, setGeneral] = useState<GeneralData>({
+    hygiene_score: "", 
     mistakes_repeated: "No",
     mistake_details: "",
     delays: "No",
@@ -142,11 +156,16 @@ export default function Dashboard() {
         submission_date: date, 
         week_label: labels.weekLabel, month_label: labels.monthLabel,
         
-        hygiene_score: general.hygiene_score,
-        mistakes_repeated: general.mistakes_repeated === 'Yes', mistake_details: general.mistake_details,
-        delays: general.delays === 'Yes', delay_reasons: general.delay_reasons,
-        general_improvements: general.general_improvements, next_week_commitment: general.next_week_commitment,
-        areas_improvement: general.areas_improvement, overall_feedback: general.overall_feedback,
+        // Ensure we send numbers to DB (convert empty string to 0 or null)
+        hygiene_score: general.hygiene_score === "" ? 0 : Number(general.hygiene_score),
+        mistakes_repeated: general.mistakes_repeated === 'Yes', 
+        mistake_details: general.mistake_details,
+        delays: general.delays === 'Yes', 
+        delay_reasons: general.delay_reasons,
+        general_improvements: general.general_improvements, 
+        next_week_commitment: general.next_week_commitment === "" ? 0 : Number(general.next_week_commitment),
+        areas_improvement: general.areas_improvement, 
+        overall_feedback: general.overall_feedback,
         
         ip_data: items
       })
@@ -216,18 +235,30 @@ export default function Dashboard() {
                   <label className="block text-sm font-semibold text-slate-900 mb-1">
                     Hygiene Score <Tooltip text="Rate your file management, naming conventions, and general discipline out of 10."/>
                   </label>
-                  <input type="number" min="0" max="10" step="0.5" placeholder="7.5" value={general.hygiene_score || ''} onChange={e => setGeneral({ ...general, hygiene_score: parseFloat(e.target.value) })} />
+                  <input 
+                    type="number" min="0" max="10" step="0.5" 
+                    placeholder="7.5" 
+                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={general.hygiene_score} 
+                    onChange={e => setGeneral({ ...general, hygiene_score: e.target.value === '' ? '' : parseFloat(e.target.value) })} 
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-900 mb-1">
                     Next Week Commitment <Tooltip text="How many reels/animations do you commit to deliver next week?"/>
                   </label>
-                  <input type="number" step="0.5" placeholder="10" value={general.next_week_commitment || ''} onChange={e => setGeneral({ ...general, next_week_commitment: parseFloat(e.target.value) })} />
+                  <input 
+                    type="number" step="0.5" 
+                    placeholder="10" 
+                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={general.next_week_commitment} 
+                    onChange={e => setGeneral({ ...general, next_week_commitment: e.target.value === '' ? '' : parseFloat(e.target.value) })} 
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div>value={general.next_week_commitment}
+                 <div>
                     <label className="block text-sm font-semibold text-slate-900 mb-2">Mistakes Repeated?</label>
                     <div className="flex gap-4">
                       {['Yes', 'No'].map(opt => (
@@ -391,7 +422,6 @@ export default function Dashboard() {
 
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        {/* UPDATED: Tooltip */}
                         <label className="block text-sm font-semibold text-slate-900 mb-1">
                           Creative Inputs 
                           <Tooltip text="Provide inputs on hooks, pacing, or process improvements for this IP (Instagram/YouTube content)." />
@@ -399,7 +429,6 @@ export default function Dashboard() {
                         <textarea className="w-full p-2.5 border border-slate-300 rounded-lg h-24 text-sm" value={item.creative_inputs} onChange={e => updateItem(idx, 'creative_inputs', e.target.value)} />
                       </div>
                       <div>
-                        {/* UPDATED: Tooltip */}
                         <label className="block text-sm font-semibold text-slate-900 mb-1">
                           Improvements (This IP)
                           <Tooltip text="Any specific improvement made on this IP (not limited to just editing)." />
