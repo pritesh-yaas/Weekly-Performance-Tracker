@@ -23,7 +23,7 @@ interface IPItem {
   creative_inputs: string
   has_blockers: string
   blocker_details: string
-  avg_reiterations: number
+  avg_reiterations: number | string
   has_qc_changes: string
   qc_details: string
   improvements: string
@@ -122,7 +122,7 @@ export default function Dashboard() {
       lf_daily: 0, lf_daily_note: "",
       total_minutes: 0, total_minutes_note: "",
       approved_reels: 0,
-      creative_inputs: "", has_blockers: "No", blocker_details: "", avg_reiterations: 0,
+      creative_inputs: "", has_blockers: "No", blocker_details: "", avg_reiterations: "",
       has_qc_changes: "No", qc_details: "", improvements: "",
       drive_links: "", manager_comments: ""
     }])
@@ -437,16 +437,23 @@ export default function Dashboard() {
                       </div>
                    </div>
                    
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <div>
-                       <label className="block text-sm font-semibold text-slate-900 mb-1">Avg Reiterations <Tooltip text="Average number of revision rounds per video."/></label>
-                       <input type="number" step="0.1" className="w-full p-2.5 border border-slate-300 rounded-lg" value={item.avg_reiterations} onChange={e => updateItem(idx, 'avg_reiterations', parseFloat(e.target.value))} />
-                     </div>
-                     <div>
-                       <label className="block text-sm font-semibold text-slate-900 mb-1">Manager Comments <Tooltip text="Feedback on your Channel Manager or Lead Editor."/></label>
-                       <textarea className="w-full p-2.5 border border-slate-300 rounded-lg h-12 text-sm" value={item.manager_comments} onChange={e => updateItem(idx, 'manager_comments', e.target.value)} />
-                     </div>
-                   </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-900 mb-1">Avg Reiterations <Tooltip text="Average number of revision rounds per video."/></label>
+                        
+                        {/* UPDATED: Added placeholder="1" and logic to handle empty string */}
+                        <input 
+                          type="number" step="0.1" placeholder="1" 
+                          className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                          value={item.avg_reiterations || ''} 
+                          onChange={e => updateItem(idx, 'avg_reiterations', e.target.value === '' ? '' : parseFloat(e.target.value))} 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-900 mb-1">Manager Comments <Tooltip text="Feedback on your Channel Manager or Lead Editor."/></label>
+                        <textarea className="w-full p-2.5 border border-slate-300 rounded-lg h-12 text-sm" value={item.manager_comments} onChange={e => updateItem(idx, 'manager_comments', e.target.value)} />
+                      </div>
+                    </div>
 
                 </div>
               ))}
