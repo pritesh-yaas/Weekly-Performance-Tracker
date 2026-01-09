@@ -216,14 +216,14 @@ export default function Dashboard() {
                   <label className="block text-sm font-semibold text-slate-900 mb-1">
                     Hygiene Score <Tooltip text="Rate your file management, naming conventions, and general discipline out of 10."/>
                   </label>
-                  <input type="number" min="0" max="10" step="0.5" required className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="7.5"
+                  <input type="number" min="0" max="10" step="0.5" placeholder="7.5" required className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="7.5"
                     value={general.hygiene_score} onChange={e => setGeneral({...general, hygiene_score: parseFloat(e.target.value)})} />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-900 mb-1">
                     Next Week Commitment <Tooltip text="How many reels/animations do you commit to deliver next week?"/>
                   </label>
-                  <input type="number" step="0.5" className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="10"
+                  <input type="number" step="0.5" placeholder="10" className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="10"
                     value={general.next_week_commitment} onChange={e => setGeneral({...general, next_week_commitment: parseFloat(e.target.value)})} />
                 </div>
               </div>
@@ -323,9 +323,9 @@ export default function Dashboard() {
                           SF - Reels per Day <Tooltip text="Average number of short-form reels completed per working day." />
                         </label>
                         <div className="flex gap-2">
-                          <input type="number" step="0.5" min="0" placeholder="0" className="w-24 p-2 border border-slate-300 rounded text-center font-bold" 
+                          <input type="number" step="0.5" min="0" placeholder="2" className="w-24 p-2 border border-slate-300 rounded text-center font-bold" 
                             value={item.sf_daily || ''} onChange={e => updateItem(idx, 'sf_daily', parseFloat(e.target.value))} />
-                          <input type="text" placeholder="Add note (e.g. 2 complex, 1 simple)" className="flex-1 p-2 border border-slate-300 rounded text-sm"
+                          <input type="text" placeholder="Add note (e.g. 1 complex, 1 simple)" className="flex-1 p-2 border border-slate-300 rounded text-sm"
                             value={item.sf_daily_note} onChange={e => updateItem(idx, 'sf_daily_note', e.target.value)} />
                         </div>
                       </div>
@@ -335,7 +335,7 @@ export default function Dashboard() {
                           LF - Minutes per Day <Tooltip text="Average minutes of Long Form content edited per day." />
                         </label>
                         <div className="flex gap-2">
-                          <input type="number" step="0.5" min="0" placeholder="0" className="w-24 p-2 border border-slate-300 rounded text-center font-bold" 
+                          <input type="number" step="0.5" min="0" placeholder="1.5" className="w-24 p-2 border border-slate-300 rounded text-center font-bold" 
                             value={item.lf_daily || ''} onChange={e => updateItem(idx, 'lf_daily', parseFloat(e.target.value))} />
                           <input type="text" placeholder="Add note..." className="flex-1 p-2 border border-slate-300 rounded text-sm"
                             value={item.lf_daily_note} onChange={e => updateItem(idx, 'lf_daily_note', e.target.value)} />
@@ -346,10 +346,10 @@ export default function Dashboard() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-semibold text-slate-800 mb-1">
-                          Total Minutes Edited <Tooltip text="Total runtime of all videos approved this week." />
+                          Total Minutes Edited <Tooltip text="Total minutes of all videos approved this week." />
                         </label>
                         <div className="flex gap-2">
-                          <input type="number" step="0.5" min="0" placeholder="0" className="w-24 p-2 border border-slate-300 rounded text-center font-bold" 
+                          <input type="number" step="0.5" min="0" placeholder="1.2" className="w-24 p-2 border border-slate-300 rounded text-center font-bold" 
                             value={item.total_minutes || ''} onChange={e => updateItem(idx, 'total_minutes', parseFloat(e.target.value))} />
                           <input type="text" placeholder="Context..." className="flex-1 p-2 border border-slate-300 rounded text-sm"
                             value={item.total_minutes_note} onChange={e => updateItem(idx, 'total_minutes_note', e.target.value)} />
@@ -358,7 +358,7 @@ export default function Dashboard() {
 
                       <div>
                         <label className="block text-sm font-semibold text-slate-800 mb-1">
-                          Total Approved Videos <Tooltip text="Total count of videos (SF + LF) fully approved this week." />
+                          Total Approved Videos <Tooltip text="Total count of videos/animations (SF + LF) fully approved this week." />
                         </label>
                         <input type="number" min="0" className="w-full p-2 border border-slate-300 rounded" 
                           value={item.approved_reels} onChange={e => updateItem(idx, 'approved_reels', parseInt(e.target.value))} />
