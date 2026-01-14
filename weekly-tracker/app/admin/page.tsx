@@ -17,7 +17,6 @@ interface Editor {
   yaas_id: string
   hasSubmitted: boolean
   submittedAt?: string
-  // New: Aggregated score for the dashboard card
   weeklyScore?: number
 }
 
@@ -69,8 +68,11 @@ export default function AdminDashboard() {
   const [reports, setReports] = useState<any[]>([])
   
   // Filters
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  // Get weeks dynamically
+  const availableWeeks = getWeekOptions()
+  const [selectedDate, setSelectedDate] = useState(availableWeeks[0].value) // Default to latest week
   const [weekLabel, setWeekLabel] = useState('')
+  
   const [globalSearch, setGlobalSearch] = useState('')
   const [trackerStatusFilter, setTrackerStatusFilter] = useState<'all' | 'submitted' | 'missing'>('all')
   const [sortConfig, setSortConfig] = useState<{ key: keyof FlatRow; direction: 'asc' | 'desc' }>({ key: 'editor_name', direction: 'asc' })
@@ -81,11 +83,6 @@ export default function AdminDashboard() {
   const [historyReports, setHistoryReports] = useState<any[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [historyDateRange, setHistoryDateRange] = useState({ start: '', end: '' })
-  
-  // Export State
-  const [showExportModal, setShowExportModal] = useState(false)
-  const [exportWeeks, setExportWeeks] = useState<string[]>([])
-  const availableWeeks = getWeekOptions()
 
   // --- 1. Init ---
   useEffect(() => {
@@ -116,23 +113,15 @@ export default function AdminDashboard() {
   const trackerData = useMemo(() => {
     return registry.map(editor => {
       const report = reports.find(r => r.editor_email === editor.email)
-      
-      // Calculate Aggregated Score (Total Output for the week)
       let weeklyScore = 0
       if (report && report.ip_data) {
         weeklyScore = report.ip_data.reduce((sum: number, ip: any) => {
-          // Fallback to legacy fields if necessary
           const sf = ip.sf_daily || ip.reels_delivered || 0
           const lf = ip.lf_daily || 0
           return sum + sf + lf
         }, 0)
       }
-
-      return { 
-        ...editor, 
-        hasSubmitted: !!report, 
-        weeklyScore 
-      }
+      return { ...editor, hasSubmitted: !!report, weeklyScore }
     }).filter(e => {
       const matchesSearch = e.name.toLowerCase().includes(globalSearch.toLowerCase()) || 
                             e.yaas_id.toLowerCase().includes(globalSearch.toLowerCase())
@@ -182,19 +171,16 @@ export default function AdminDashboard() {
 
   const processedTableData = useMemo(() => {
     let data = [...rawFlatData]
-    // Global Search
     if (globalSearch) {
       const lower = globalSearch.toLowerCase()
       data = data.filter(row => row.editor_name.toLowerCase().includes(lower) || row.yaas_id.toLowerCase().includes(lower) || row.ip_name.toLowerCase().includes(lower))
     }
-    // Column Filters
     Object.keys(columnFilters).forEach((key) => {
       const filterVal = columnFilters[key as keyof FlatRow]?.toLowerCase()
       if (filterVal) {
         data = data.filter(row => String(row[key as keyof FlatRow]).toLowerCase().includes(filterVal))
       }
     })
-    // Sort
     data.sort((a, b) => {
       const valA = a[sortConfig.key]; const valB = b[sortConfig.key]
       if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1
@@ -230,87 +216,104 @@ export default function AdminDashboard() {
     setLoadingHistory(false)
   }
 
-  // --- Export Logic ---
-  const handleExport = async () => {
-    let allData: any[] = []
-    
-    // 1. Fetch Data for selected weeks
-    for (const week of exportWeeks) {
-      const { data } = await supabase.from('reports').select('*').eq('week_label', week)
-      if (data) allData = [...allData, ...data]
-    }
+  // --- Instant Export Logic ---
+  const handleExport = () => {
+    if (rawFlatData.length === 0) return alert("No data available to export for this week.")
 
-    if (allData.length === 0) return alert("No data found for selected weeks.")
+    const exportRows = rawFlatData.map(r => ({
+      Timestamp: r.submission_date,
+      Name: r.editor_name,
+      'YAAS ID': r.yaas_id,
+      Email: r.editor_email,
+      Hygiene: r.hygiene_score,
+      Mistakes: r.mistakes_repeated === 'Yes' ? 'Yes' : 'No',
+      'Mistake Details': r.mistake_details || '', // Force empty string if null
+      Delays: r.delays === 'Yes' ? 'Yes' : 'No',
+      'Delay Reasons': r.delay_reasons || '',
+      Improvements: r.general_improvements,
+      Target: r.next_week_commitment,
+      'Areas Imp': r.areas_improvement,
+      Feedback: r.overall_feedback,
+      
+      IP: r.ip_name,
+      Lead: r.lead_editor,
+      Manager: r.channel_manager,
+      'SF Daily': r.sf_daily,
+      'SF Note': r.sf_daily_note,
+      'LF Daily': r.lf_daily,
+      'LF Note': r.lf_daily_note,
+      'Total Mins': r.total_minutes,
+      'Total Note': r.total_minutes_note,
+      Approved: r.approved_reels,
+      'Creative Inputs': r.creative_inputs,
+      
+      // Ensure "Blocker" details are exported even if column looks empty in UI
+      Blockers: r.has_blockers === 'Yes' ? 'Yes' : 'No',
+      'Blocker Detail': r.blocker_details || '', 
+      
+      'Avg Iter': r.avg_reiterations,
+      
+      'QC Repeat': r.has_qc_changes === 'Yes' ? 'Yes' : 'No',
+      'QC Detail': r.qc_details || '',
+      
+      'IP Imp': r.improvements,
+      Links: r.drive_links,
+      'Mgr Comment': r.manager_comments
+    }))
 
-    // 2. Flatten Data (Same logic as Data Sheet)
-    const exportRows = allData.flatMap(r => {
-      const ips = r.ip_data || []
-      const base = {
-        Timestamp: r.submission_date, Name: r.editor_name, ID: r.yaas_id, Email: r.editor_email,
-        Hygiene: r.hygiene_score, Mistakes: r.mistakes_repeated ? 'Yes' : 'No', 'Mistake Details': r.mistake_details,
-        Delays: r.delays ? 'Yes' : 'No', 'Delay Reasons': r.delay_reasons, Improvements: r.general_improvements,
-        Target: r.next_week_commitment, 'Areas Imp': r.areas_improvement, Feedback: r.overall_feedback
-      }
-      if (ips.length === 0) return [base]
-      return ips.map((ip: any) => ({
-        ...base,
-        IP: ip.ip_name, Lead: ip.lead_editor, Manager: ip.channel_manager,
-        'SF Daily': ip.sf_daily || 0, 'SF Note': ip.sf_daily_note,
-        'LF Daily': ip.lf_daily || 0, 'LF Note': ip.lf_daily_note,
-        'Total Mins': ip.total_minutes || 0, 'Approved': ip.approved_reels,
-        'Blockers': ip.has_blockers, 'QC Repeat': ip.has_qc_changes, Links: ip.drive_links
-      }))
-    })
-
-    // 3. Create Excel
     const ws = XLSX.utils.json_to_sheet(exportRows)
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, "Reports")
-    XLSX.writeFile(wb, "Weekly_Performance_Report.xlsx")
-    setShowExportModal(false)
+    XLSX.utils.book_append_sheet(wb, ws, "Report")
+    
+    // Create clean filename based on selected week
+    const safeName = weekLabel.replace(/[^a-z0-9]/gi, '_').toLowerCase()
+    XLSX.writeFile(wb, `report_${safeName}.xlsx`)
   }
 
-  // --- Helpers ---
+  // --- Render Header (Filter Logic) ---
   const getUniqueValues = (key: keyof FlatRow) => {
     const values = new Set(rawFlatData.map(r => String(r[key] || '')))
     return Array.from(values).sort().filter(v => v !== '')
   }
 
-  // --- Render Header (Filter Logic) ---
-  const renderHeader = (label: string, key: keyof FlatRow, width: string = 'w-auto') => {
+  const renderHeader = (label: string, key: keyof FlatRow, width: string = 'min-w-[120px]') => {
     const uniqueVals = getUniqueValues(key)
-    const showDropdown = uniqueVals.length <= 50 // Show dropdown if manageable size
+    const showDropdown = uniqueVals.length <= 50 
 
     return (
       <th className={`p-3 border text-xs font-bold text-slate-700 bg-slate-50 sticky top-0 z-10 select-none group ${width}`}>
-        <div className="flex items-center gap-1 cursor-pointer hover:text-blue-600" onClick={() => setSortConfig({ key, direction: sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>
+        <div className="flex items-center gap-1 cursor-pointer hover:text-blue-600 mb-2" onClick={() => setSortConfig({ key, direction: sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc' })}>
           {label}
           {sortConfig.key === key && (sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
         </div>
         
         {viewMode === 'data' && (
-           <div className="mt-1 relative">
+           <div className="relative w-full">
              {showDropdown ? (
                <select 
-                 className="w-full text-[10px] p-1 border rounded font-normal outline-none focus:border-blue-500 bg-white"
+                 className="w-full text-[10px] p-1 border rounded outline-none focus:border-blue-500 bg-white cursor-pointer"
                  value={columnFilters[key] || ''}
                  onChange={(e) => setColumnFilters(prev => ({ ...prev, [key]: e.target.value }))}
                  onClick={(e) => e.stopPropagation()}
                >
                  <option value="">All</option>
-                 {uniqueVals.map(v => <option key={v} value={v}>{v.substring(0, 20)}</option>)}
+                 {uniqueVals.map(v => <option key={v} value={v}>{v.substring(0, 25)}</option>)}
                </select>
              ) : (
-               <input type="text" placeholder="Filter..." className="w-full text-[10px] p-1 border rounded"
-                 value={columnFilters[key] || ''}
-                 onChange={(e) => setColumnFilters(prev => ({ ...prev, [key]: e.target.value }))}
-                 onClick={(e) => e.stopPropagation()}
-               />
+               <div className="relative">
+                 <input type="text" placeholder="Search..." className="w-full text-[10px] p-1 pr-4 border rounded outline-none"
+                   value={columnFilters[key] || ''}
+                   onChange={(e) => setColumnFilters(prev => ({ ...prev, [key]: e.target.value }))}
+                   onClick={(e) => e.stopPropagation()}
+                 />
+               </div>
              )}
              
              {columnFilters[key] && (
-               <X size={10} className="absolute right-1 top-1.5 cursor-pointer text-slate-400 hover:text-red-500" 
-                  onClick={(e: React.MouseEvent) => { e.stopPropagation(); setColumnFilters(prev => ({ ...prev, [key]: '' })) }} />
+               <button className="absolute right-1 top-1.5 text-slate-400 hover:text-red-500" 
+                  onClick={(e) => { e.stopPropagation(); setColumnFilters(prev => ({ ...prev, [key]: '' })) }}>
+                  <X size={10} />
+               </button>
              )}
            </div>
         )}
@@ -331,14 +334,16 @@ export default function AdminDashboard() {
     const val = row[key]
     if (key === 'editor_name') return <button onClick={() => openEditorHistory(row.editor_email, row.editor_name, row.yaas_id)} className="font-bold text-slate-800 hover:text-blue-600 hover:underline text-left">{val}</button>
     if (key === 'ip_name') return <button onClick={() => setColumnFilters(prev => ({...prev, ip_name: String(val)}))} className="font-medium text-blue-700 hover:underline text-left">{val}</button>
-    if (key === 'drive_links' && val) return <span title={String(val)} className="text-blue-500 cursor-pointer text-[10px]">Links</span>
+    if (key === 'drive_links' && val) return <span title={String(val)} className="text-blue-500 cursor-pointer text-[10px] block w-20 truncate">View Links</span>
     
     if (['sf_daily', 'lf_daily', 'total_minutes'].includes(key as string)) {
         const noteKey = key + '_note'
         const note = (row as any)[noteKey]
         return <div><span className="font-bold">{val}</span>{note && <span className="block text-[9px] text-slate-500" title={note}>*</span>}</div>
     }
-    return <span className="truncate block max-w-[200px]" title={String(val)}>{val}</span>
+    
+    // UPDATED: Allow text wrapping for long fields
+    return <div className="min-w-[100px] max-w-[250px] break-words text-xs whitespace-normal">{val}</div>
   }
 
   // --- Aggregate Stats for Modal ---
@@ -374,12 +379,18 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex flex-wrap gap-3 items-center bg-white p-2 rounded-xl shadow-sm border">
+           {/* Week Selector Dropdown (Reverted as per your request to be cleaner) */}
            <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-lg border">
              <Calendar size={16} className="text-blue-600"/>
-             <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} 
-               className="bg-transparent outline-none text-sm font-medium cursor-pointer" />
-             <div className="h-4 w-[1px] bg-slate-300 mx-1"></div>
-             <span className="text-xs font-bold text-slate-600 whitespace-nowrap">{getWeekRangeDisplay(selectedDate)}</span>
+             <select 
+               value={selectedDate} 
+               onChange={e => setSelectedDate(e.target.value)} 
+               className="bg-transparent outline-none text-sm font-medium cursor-pointer"
+             >
+               {availableWeeks.map(w => (
+                 <option key={w.value} value={w.value}>{w.label}</option>
+               ))}
+             </select>
            </div>
 
            <div className="flex bg-slate-100 rounded-lg p-1">
@@ -404,9 +415,11 @@ export default function AdminDashboard() {
                 className="pl-8 pr-2 py-1.5 text-sm border rounded-lg w-40 focus:w-56 transition-all outline-none focus:ring-2 focus:ring-blue-500"/>
            </div>
            
-           <button onClick={() => setShowExportModal(true)} className="p-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition" title="Export Excel">
+           {/* ONE CLICK DOWNLOAD BUTTON */}
+           <button onClick={handleExport} className="p-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition" title="Download Excel for this Week">
              <Download size={16} />
            </button>
+           
            <button onClick={() => {setGlobalSearch(''); setColumnFilters({}); setSortConfig({key:'editor_name',direction:'asc'})}} className="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition">
              <RefreshCw size={16} />
            </button>
@@ -445,7 +458,7 @@ export default function AdminDashboard() {
       {viewMode === 'data' && (
         <div className="bg-white rounded-xl shadow border overflow-hidden flex flex-col h-[80vh]">
           <div className="overflow-auto flex-1">
-            <table className="w-full text-xs text-left border-collapse whitespace-nowrap">
+            <table className="w-full text-xs text-left border-collapse">
               <thead className="bg-slate-50">
                  <tr>
                     {renderHeader('Timestamp', 'submission_date')}
@@ -454,13 +467,13 @@ export default function AdminDashboard() {
                     {renderHeader('Email', 'editor_email')}
                     {renderHeader('Hygiene', 'hygiene_score')}
                     {renderHeader('Mistakes?', 'mistakes_repeated')}
-                    {renderHeader('Mistake Details', 'mistake_details', 'min-w-[150px]')}
+                    {renderHeader('Mistake Details', 'mistake_details', 'min-w-[200px]')}
                     {renderHeader('Delays?', 'delays')}
-                    {renderHeader('Delay Reason', 'delay_reasons', 'min-w-[150px]')}
-                    {renderHeader('Gen. Improvements', 'general_improvements', 'min-w-[150px]')}
+                    {renderHeader('Delay Reason', 'delay_reasons', 'min-w-[200px]')}
+                    {renderHeader('Gen. Improvements', 'general_improvements', 'min-w-[200px]')}
                     {renderHeader('Target', 'next_week_commitment')}
-                    {renderHeader('Areas Imp.', 'areas_improvement', 'min-w-[150px]')}
-                    {renderHeader('Reflection', 'overall_feedback', 'min-w-[150px]')}
+                    {renderHeader('Areas Imp.', 'areas_improvement', 'min-w-[200px]')}
+                    {renderHeader('Reflection', 'overall_feedback', 'min-w-[200px]')}
                     <th className="border p-2 bg-blue-50 w-2"></th> 
                     {renderHeader('IP Name', 'ip_name', 'bg-blue-50 text-blue-900')}
                     {renderHeader('Lead', 'lead_editor', 'bg-blue-50 text-blue-900')}
@@ -469,15 +482,15 @@ export default function AdminDashboard() {
                     {renderHeader('LF Daily', 'lf_daily', 'bg-blue-50 text-blue-900')}
                     {renderHeader('Total Mins', 'total_minutes', 'bg-blue-50 text-blue-900')}
                     {renderHeader('Approved', 'approved_reels', 'bg-blue-50 text-blue-900')}
-                    {renderHeader('Creative', 'creative_inputs', 'bg-blue-50 text-blue-900 min-w-[150px]')}
+                    {renderHeader('Creative', 'creative_inputs', 'bg-blue-50 text-blue-900 min-w-[200px]')}
                     {renderHeader('Blockers?', 'has_blockers', 'bg-blue-50 text-blue-900')}
-                    {renderHeader('Blocker Det', 'blocker_details', 'bg-blue-50 text-blue-900 min-w-[150px]')}
+                    {renderHeader('Blocker Det', 'blocker_details', 'bg-blue-50 text-blue-900 min-w-[200px]')}
                     {renderHeader('Avg Iter', 'avg_reiterations', 'bg-blue-50 text-blue-900')}
                     {renderHeader('QC Repeat?', 'has_qc_changes', 'bg-blue-50 text-blue-900')}
-                    {renderHeader('QC Detail', 'qc_details', 'bg-blue-50 text-blue-900 min-w-[150px]')}
-                    {renderHeader('IP Imp.', 'improvements', 'bg-blue-50 text-blue-900 min-w-[150px]')}
+                    {renderHeader('QC Detail', 'qc_details', 'bg-blue-50 text-blue-900 min-w-[200px]')}
+                    {renderHeader('IP Imp.', 'improvements', 'bg-blue-50 text-blue-900 min-w-[200px]')}
                     {renderHeader('Links', 'drive_links', 'bg-blue-50 text-blue-900')}
-                    {renderHeader('Mgr Comment', 'manager_comments', 'bg-blue-50 text-blue-900 min-w-[150px]')}
+                    {renderHeader('Mgr Comment', 'manager_comments', 'bg-blue-50 text-blue-900 min-w-[200px]')}
                  </tr>
               </thead>
               <tbody>
@@ -572,45 +585,6 @@ export default function AdminDashboard() {
                  ))}
               </div>
            </div>
-        </div>
-      )}
-
-      {/* --- EXPORT MODAL --- */}
-      {showExportModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-            <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><FileSpreadsheet className="text-green-600"/> Export Data</h2>
-            <p className="text-sm text-slate-500 mb-4">Select weeks to include in the Excel report.</p>
-            
-            <div className="max-h-60 overflow-y-auto border rounded-lg p-2 mb-4">
-              <label className="flex items-center gap-2 p-2 hover:bg-slate-50 cursor-pointer border-b">
-                <input type="checkbox" 
-                  checked={exportWeeks.length === availableWeeks.length}
-                  onChange={(e) => setExportWeeks(e.target.checked ? availableWeeks.map(w => w.label) : [])} 
-                />
-                <span className="font-bold text-sm">Select All Weeks</span>
-              </label>
-              {availableWeeks.map(w => (
-                <label key={w.label} className="flex items-center gap-2 p-2 hover:bg-slate-50 cursor-pointer">
-                  <input type="checkbox" 
-                    checked={exportWeeks.includes(w.label)}
-                    onChange={(e) => {
-                      if(e.target.checked) setExportWeeks([...exportWeeks, w.label])
-                      else setExportWeeks(exportWeeks.filter(x => x !== w.label))
-                    }} 
-                  />
-                  <span className="text-sm">{w.label}</span>
-                </label>
-              ))}
-            </div>
-
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setShowExportModal(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg text-sm font-medium">Cancel</button>
-              <button onClick={handleExport} disabled={exportWeeks.length === 0} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700 disabled:opacity-50">
-                Download Excel
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
