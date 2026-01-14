@@ -331,17 +331,67 @@ export default function AdminDashboard() {
 
   const renderCellValue = (row: FlatRow, key: keyof FlatRow) => {
     const val = row[key]
-    if (key === 'editor_name') return <button onClick={() => openEditorHistory(row.editor_email, row.editor_name, row.yaas_id)} className="font-bold text-slate-800 hover:text-blue-600 hover:underline text-left">{val}</button>
-    if (key === 'ip_name') return <button onClick={() => setColumnFilters(prev => ({...prev, ip_name: String(val)}))} className="font-medium text-blue-700 hover:underline text-left">{val}</button>
-    if (key === 'drive_links' && val) return <span title={String(val)} className="text-blue-500 cursor-pointer text-[10px] block w-20 truncate">View Links</span>
     
+    // 1. Name Click -> History
+    if (key === 'editor_name') {
+      return (
+        <button onClick={() => openEditorHistory(row.editor_email, row.editor_name, row.yaas_id)} 
+          className="font-bold text-slate-800 hover:text-blue-600 hover:underline text-left">
+          {val}
+        </button>
+      )
+    }
+    
+    // 2. IP Click -> Filter
+    if (key === 'ip_name') {
+      return (
+        <button onClick={() => setColumnFilters(prev => ({...prev, ip_name: String(val)}))} 
+          className="font-medium text-blue-700 hover:underline text-left">
+          {val}
+        </button>
+      )
+    }
+    
+    // 3. FIX: Link Parsing Logic
+    if (key === 'drive_links' && val) {
+      // Regex to find http/https links
+      const links = String(val).match(/\bhttps?:\/\/\S+/gi);
+      
+      if (links && links.length > 0) {
+         return (
+           <div className="flex flex-col gap-1">
+             {links.map((link, i) => (
+               <a 
+                 key={i} 
+                 href={link} 
+                 target="_blank" 
+                 rel="noopener noreferrer" 
+                 className="text-blue-600 underline text-[10px] block truncate max-w-[100px] hover:text-blue-800" 
+                 onClick={e => e.stopPropagation()} // Prevent row click
+                 title={link} // Show full link on hover
+               >
+                 Link {i+1}
+               </a>
+             ))}
+           </div>
+         )
+      }
+      return <span className="text-slate-400 text-[10px] italic">No Links</span>
+    }
+
+    // 4. Number + Note Fields
     if (['sf_daily', 'lf_daily', 'total_minutes'].includes(key as string)) {
         const noteKey = key + '_note'
         const note = (row as any)[noteKey]
-        return <div><span className="font-bold">{val}</span>{note && <span className="block text-[9px] text-slate-500" title={note}>*</span>}</div>
+        return (
+          <div>
+            <span className="font-bold">{val}</span>
+            {note && <span className="block text-[9px] text-slate-500 bg-yellow-50 p-0.5 rounded truncate max-w-[80px]" title={note}>{note}</span>}
+          </div>
+        )
     }
-    
-    // UPDATED: Allow text wrapping for long fields
+
+    // Default Text
     return <div className="min-w-[100px] max-w-[250px] break-words text-xs whitespace-normal">{val}</div>
   }
 
