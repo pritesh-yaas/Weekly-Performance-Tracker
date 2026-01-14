@@ -68,9 +68,8 @@ export default function AdminDashboard() {
   const [reports, setReports] = useState<any[]>([])
   
   // Filters
-  // Get weeks dynamically
-  const availableWeeks = getWeekOptions()
-  const [selectedDate, setSelectedDate] = useState(availableWeeks[0].value) // Default to latest week
+  // Use Date Picker instead of Dropdown
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [weekLabel, setWeekLabel] = useState('')
   
   const [globalSearch, setGlobalSearch] = useState('')
@@ -379,18 +378,13 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex flex-wrap gap-3 items-center bg-white p-2 rounded-xl shadow-sm border">
-           {/* Week Selector Dropdown (Reverted as per your request to be cleaner) */}
+           {/* REPLACED DROPDOWN WITH CALENDAR PICKER */}
            <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-lg border">
              <Calendar size={16} className="text-blue-600"/>
-             <select 
-               value={selectedDate} 
-               onChange={e => setSelectedDate(e.target.value)} 
-               className="bg-transparent outline-none text-sm font-medium cursor-pointer"
-             >
-               {availableWeeks.map(w => (
-                 <option key={w.value} value={w.value}>{w.label}</option>
-               ))}
-             </select>
+             <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} 
+               className="bg-transparent outline-none text-sm font-medium cursor-pointer" />
+             <div className="h-4 w-[1px] bg-slate-300 mx-1"></div>
+             <span className="text-xs font-bold text-slate-600 whitespace-nowrap">{getWeekRangeDisplay(selectedDate)}</span>
            </div>
 
            <div className="flex bg-slate-100 rounded-lg p-1">
