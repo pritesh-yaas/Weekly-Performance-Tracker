@@ -5,11 +5,13 @@ import { cookies } from 'next/headers'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  // Default to dashboard, but allow 'next' param to override
   const next = searchParams.get('next') ?? '/dashboard'
 
   if (code) {
     const cookieStore = await cookies()
 
+    // Create a Server Client to handle the cookie exchange securely
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -27,13 +29,16 @@ export async function GET(request: Request) {
         },
       }
     )
+    
+    // Exchange the Auth Code for a Session
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error) {
+      // Success! Redirect user to the dashboard
       return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
-  // If error, return to login
+  // If something failed, send them back to login with an error
   return NextResponse.redirect(`${origin}/?error=auth_code_error`)
 }
