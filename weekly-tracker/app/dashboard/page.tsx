@@ -343,28 +343,31 @@ export default function Dashboard() {
                     <div><label className="block text-sm font-semibold text-slate-800">Channel Manager</label><input type="text" className="w-full p-2.5 border rounded" value={item.channel_manager} onChange={e => updateItem(idx, 'channel_manager', e.target.value)} /></div>
                   </div>
 
+                  {/* NEW METRICS SECTION */}
                   <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                     <h3 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wide">Output Metrics</h3>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                      {/* SF Week */}
                       <div>
-                        <label className="block text-sm font-semibold text-slate-800 mb-1">
-                          SF - Reels per Day <Tooltip text="Average number of short-form reels completed per working day." />
+                        <label className="block text-sm font-semibold text-slate-900 mb-1">
+                          SF - No. of Reels Edited in the week <Tooltip text="Total number of short-form reels completed this week." />
                         </label>
                         <div className="flex gap-2">
-                          <input type="number" step="0.5" min="0" placeholder="2" className="w-24 p-2 border border-slate-300 rounded text-center font-bold" 
+                          <input type="number" step="0.5" min="0" placeholder="0" className="w-24 p-2 border border-slate-300 rounded text-center font-bold" 
                             value={item.sf_daily || ''} onChange={e => updateItem(idx, 'sf_daily', parseFloat(e.target.value))} />
-                          <input type="text" placeholder="Add note (e.g. 1 complex, 1 simple)" className="flex-1 p-2 border border-slate-300 rounded text-sm"
+                          <input type="text" placeholder="Add note (e.g. 2 complex, 1 simple)" className="flex-1 p-2 border border-slate-300 rounded text-sm"
                             value={item.sf_daily_note} onChange={e => updateItem(idx, 'sf_daily_note', e.target.value)} />
                         </div>
                       </div>
 
+                      {/* LF Week */}
                       <div>
-                        <label className="block text-sm font-semibold text-slate-800 mb-1">
-                          LF - Minutes per Day <Tooltip text="Average minutes of Long Form content edited per day." />
+                        <label className="block text-sm font-semibold text-slate-900 mb-1">
+                          LF - Minutes of LF Edited in the week <Tooltip text="Total minutes of Long Form content edited this week." />
                         </label>
                         <div className="flex gap-2">
-                          <input type="number" step="0.5" min="0" placeholder="1.5" className="w-24 p-2 border border-slate-300 rounded text-center font-bold" 
+                          <input type="number" step="0.5" min="0" placeholder="0" className="w-24 p-2 border border-slate-300 rounded text-center font-bold" 
                             value={item.lf_daily || ''} onChange={e => updateItem(idx, 'lf_daily', parseFloat(e.target.value))} />
                           <input type="text" placeholder="Add note..." className="flex-1 p-2 border border-slate-300 rounded text-sm"
                             value={item.lf_daily_note} onChange={e => updateItem(idx, 'lf_daily_note', e.target.value)} />
@@ -373,21 +376,23 @@ export default function Dashboard() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Total Minutes */}
                       <div>
-                        <label className="block text-sm font-semibold text-slate-800 mb-1">
-                          Total Minutes Edited <Tooltip text="Total minutes of all videos approved this week." />
+                        <label className="block text-sm font-semibold text-slate-900 mb-1">
+                          Total Minutes Edited <Tooltip text="Total runtime of all videos approved this week." />
                         </label>
                         <div className="flex gap-2">
-                          <input type="number" step="0.5" min="0" placeholder="1.2" className="w-24 p-2 border border-slate-300 rounded text-center font-bold" 
+                          <input type="number" step="0.5" min="0" placeholder="0" className="w-24 p-2 border border-slate-300 rounded text-center font-bold" 
                             value={item.total_minutes || ''} onChange={e => updateItem(idx, 'total_minutes', parseFloat(e.target.value))} />
                           <input type="text" placeholder="Context..." className="flex-1 p-2 border border-slate-300 rounded text-sm"
                             value={item.total_minutes_note} onChange={e => updateItem(idx, 'total_minutes_note', e.target.value)} />
                         </div>
                       </div>
 
+                      {/* Approved Count */}
                       <div>
-                        <label className="block text-sm font-semibold text-slate-800 mb-1">
-                          Total Approved Videos <Tooltip text="Total count of videos/animations (SF + LF) fully approved this week." />
+                        <label className="block text-sm font-semibold text-slate-900 mb-1">
+                          Total Approved Videos <Tooltip text="Total count of videos (SF + LF) fully approved this week." />
                         </label>
                         <input type="number" min="0" className="w-full p-2 border border-slate-300 rounded" 
                           value={item.approved_reels} onChange={e => updateItem(idx, 'approved_reels', parseInt(e.target.value))} />

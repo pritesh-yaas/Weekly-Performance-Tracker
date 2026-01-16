@@ -237,9 +237,9 @@ export default function AdminDashboard() {
       IP: r.ip_name,
       Lead: r.lead_editor,
       Manager: r.channel_manager,
-      'SF Daily': r.sf_daily,
+      'SF (Week)': r.sf_daily, // Changed from 'SF Daily'
       'SF Note': r.sf_daily_note,
-      'LF Daily': r.lf_daily,
+      'LF (Week)': r.lf_daily, // Changed from 'LF Daily'
       'LF Note': r.lf_daily_note,
       'Total Mins': r.total_minutes,
       'Total Note': r.total_minutes_note,
@@ -522,8 +522,8 @@ export default function AdminDashboard() {
                     {renderHeader('IP Name', 'ip_name', 'bg-blue-50 text-blue-900')}
                     {renderHeader('Lead', 'lead_editor', 'bg-blue-50 text-blue-900')}
                     {renderHeader('Manager', 'channel_manager', 'bg-blue-50 text-blue-900')}
-                    {renderHeader('SF Daily', 'sf_daily', 'bg-blue-50 text-blue-900')}
-                    {renderHeader('LF Daily', 'lf_daily', 'bg-blue-50 text-blue-900')}
+                    {renderHeader('SF (Week)', 'sf_daily', 'bg-blue-50 text-blue-900')}
+                    {renderHeader('LF (Week)', 'lf_daily', 'bg-blue-50 text-blue-900')}
                     {renderHeader('Total Mins', 'total_minutes', 'bg-blue-50 text-blue-900')}
                     {renderHeader('Approved', 'approved_reels', 'bg-blue-50 text-blue-900')}
                     {renderHeader('Creative', 'creative_inputs', 'bg-blue-50 text-blue-900 min-w-[200px]')}
@@ -614,15 +614,29 @@ export default function AdminDashboard() {
                              const sf = ip.sf_daily || ip.reels_delivered || 0
                              const lf = ip.lf_daily || 0
                              return (
-                               <div key={i} className="flex justify-between items-center text-xs border-b pb-2 last:border-0 last:pb-0">
-                                  <span className="font-bold w-1/3">{ip.ip_name}</span>
-                                  <div className="flex gap-2">
-                                    {sf > 0 && <span className="bg-blue-100 px-2 py-0.5 rounded text-blue-800">SF: {sf}</span>}
-                                    {lf > 0 && <span className="bg-purple-100 px-2 py-0.5 rounded text-purple-800">LF: {lf}</span>}
-                                    <span className="bg-green-100 px-2 py-0.5 rounded text-green-800">Appr: {ip.approved_reels || 0}</span>
-                                  </div>
-                               </div>
-                             )
+                              <div key={i} className="bg-slate-50 p-3 rounded border text-xs flex flex-col gap-2">
+                                <div className="font-bold text-slate-800 text-sm">{ip.ip_name}</div>
+                                <div className="flex flex-wrap gap-2">
+                                  
+                                  {/* UPDATED LABEL: SF (Week) */}
+                                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium border border-blue-200">
+                                    SF (Week): {sf} {note}
+                                  </span>
+
+                                  {/* UPDATED LABEL: LF (Week) */}
+                                  <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded font-medium border border-purple-200">
+                                    LF (Week): {ip.lf_daily || 0} {ip.lf_daily_note}
+                                  </span>
+
+                                  <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded font-medium border border-orange-200">
+                                    Total: {ip.total_minutes || 0}m {ip.total_minutes_note}
+                                  </span>
+                                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded font-medium border border-green-200">
+                                    Approved: {ip.approved_reels || 0}
+                                  </span>
+                                </div>
+                              </div>
+                            )
                           })}
                        </div>
                     </div>
