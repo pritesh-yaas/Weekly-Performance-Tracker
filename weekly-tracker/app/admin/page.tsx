@@ -611,32 +611,42 @@ export default function AdminDashboard() {
                        </div>
                        <div className="p-4 space-y-3">
                           {r.ip_data && r.ip_data.map((ip: any, i: number) => {
-                             const sf = ip.sf_daily || ip.reels_delivered || 0
+                             // Backward Compatibility Logic
+                             const sf = ip.sf_daily !== undefined ? ip.sf_daily : (ip.reels_delivered || 0)
+                             const sfNote = ip.sf_daily_note || (ip.reels_delivered !== undefined ? '(Legacy)' : '')
                              const lf = ip.lf_daily || 0
+                             const lfNote = ip.lf_daily_note || ''
+                             const totalMins = ip.total_minutes || 0
+                             const totalNote = ip.total_minutes_note || ''
+
                              return (
-                              <div key={i} className="bg-slate-50 p-3 rounded border text-xs flex flex-col gap-2">
-                                <div className="font-bold text-slate-800 text-sm">{ip.ip_name}</div>
-                                <div className="flex flex-wrap gap-2">
-                                  
-                                  {/* UPDATED LABEL: SF (Week) */}
-                                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium border border-blue-200">
-                                    SF (Week): {sf} {note}
-                                  </span>
-
-                                  {/* UPDATED LABEL: LF (Week) */}
-                                  <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded font-medium border border-purple-200">
-                                    LF (Week): {ip.lf_daily || 0} {ip.lf_daily_note}
-                                  </span>
-
-                                  <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded font-medium border border-orange-200">
-                                    Total: {ip.total_minutes || 0}m {ip.total_minutes_note}
-                                  </span>
-                                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded font-medium border border-green-200">
-                                    Approved: {ip.approved_reels || 0}
-                                  </span>
-                                </div>
-                              </div>
-                            )
+                               <div key={i} className="bg-slate-50 p-3 rounded border text-xs flex flex-col gap-2">
+                                  <div className="font-bold text-slate-800 text-sm">{ip.ip_name}</div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {/* SF Badge */}
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium border border-blue-200" title={sfNote}>
+                                      SF (Week): {sf} {sfNote && '*'}
+                                    </span>
+                                    
+                                    {/* LF Badge */}
+                                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded font-medium border border-purple-200" title={lfNote}>
+                                      LF (Week): {lf} {lfNote && '*'}
+                                    </span>
+                                    
+                                    {/* Total Mins Badge */}
+                                    {totalMins > 0 && (
+                                      <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded font-medium border border-orange-200" title={totalNote}>
+                                        Total: {totalMins}m {totalNote && '*'}
+                                      </span>
+                                    )}
+                                    
+                                    {/* Approved Badge */}
+                                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded font-medium border border-green-200">
+                                      Appr: {ip.approved_reels || 0}
+                                    </span>
+                                  </div>
+                               </div>
+                             )
                           })}
                        </div>
                     </div>
