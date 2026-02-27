@@ -1,9 +1,9 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { calculateWeekAndMonth, getWeekRangeDisplay } from '@/lib/utils'
-import { Plus, X, LogOut, Info, Calendar } from 'lucide-react'
+import { Plus, X, LogOut, Info, Calendar, History } from 'lucide-react'
 
 // --- Types ---
 interface IPItem {
@@ -84,6 +84,12 @@ export default function Dashboard() {
 
   const [activeTab, setActiveTab] = useState(0)
   const [items, setItems] = useState<IPItem[]>([])
+
+  // --- My History Modal State ---
+  const [showHistory, setShowHistory] = useState(false)
+  const [historyReports, setHistoryReports] = useState<any[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [selectedWeekFilter, setSelectedWeekFilter] = useState<string>('')
 
   useEffect(() => {
     const init = async () => {
@@ -180,6 +186,56 @@ export default function Dashboard() {
     }
   }
 
+  // --- Fetch current editor's own history ---
+  const fetchHistory = async () => {
+    if (!user) return
+    setLoadingHistory(true)
+    setShowHistory(true)
+    setSelectedWeekFilter('')
+    const { data, error } = await supabase
+      .from('reports')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('submission_date', { ascending: false })
+    if (!error && data) setHistoryReports(data)
+    setLoadingHistory(false)
+  }
+
+  // --- Lifetime stats for current editor ---
+  const lifetimeStats = useMemo(() => {
+    if (!historyReports.length) return null
+    const totalReports = historyReports.length
+    const avgHygiene = (historyReports.reduce((acc, r) => acc + (r.hygiene_score || 0), 0) / totalReports).toFixed(1)
+    let totalSF = 0, totalLF = 0, totalMins = 0, totalApproved = 0
+    historyReports.forEach(r => {
+      r.ip_data?.forEach((ip: any) => {
+        totalSF += (ip.sf_daily !== undefined ? ip.sf_daily : (ip.reels_delivered || 0))
+        totalLF += (ip.lf_daily || 0)
+        totalMins += (ip.total_minutes || 0)
+        totalApproved += (ip.approved_reels || 0)
+      })
+    })
+    return { totalReports, avgHygiene, totalSF, totalLF, totalMins, totalApproved }
+  }, [historyReports])
+
+  // --- Week filter derived data ---
+  const filteredHistoryReports = useMemo(() => {
+    if (!selectedWeekFilter) return historyReports
+    return historyReports.filter(r => r.week_label === selectedWeekFilter)
+  }, [historyReports, selectedWeekFilter])
+
+  const weekFilterOptions = useMemo(() => {
+    const seen = new Set<string>()
+    const options: string[] = []
+    historyReports.forEach(r => {
+      if (r.week_label && !seen.has(r.week_label)) {
+        seen.add(r.week_label)
+        options.push(r.week_label)
+      }
+    })
+    return options
+  }, [historyReports])
+
   if (loading) return <div className="p-10 text-center font-sans">Loading...</div>
 
   return (
@@ -191,9 +247,14 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold text-slate-900">Weekly Performance Report</h1>
             <p className="text-xs text-slate-500 mt-1">Please fill this form accurately for your weekly review.</p>
           </div>
-          <button onClick={() => supabase.auth.signOut().then(() => router.push('/'))} className="text-sm text-red-500 flex items-center gap-1 font-medium hover:text-red-700">
-            <LogOut size={16} /> Sign Out
-          </button>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={fetchHistory} className="text-sm text-blue-600 flex items-center gap-1.5 font-medium hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition border border-blue-200">
+              <History size={16} /> My History
+            </button>
+            <button type="button" onClick={() => supabase.auth.signOut().then(() => router.push('/'))} className="text-sm text-red-500 flex items-center gap-1 font-medium hover:text-red-700">
+              <LogOut size={16} /> Sign Out
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -471,6 +532,128 @@ export default function Dashboard() {
 
         </form>
       </div>
+
+      {/* ===== MY HISTORY MODAL ===== */}
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex justify-end" onClick={() => setShowHistory(false)}>
+          <div className="bg-slate-50 w-full max-w-3xl h-full shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+
+            {/* MODAL HEADER */}
+            <div className="bg-white p-6 border-b">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-xl font-bold">{editorInfo.name}</h2>
+                  <div className="text-slate-500 text-sm mt-1">{editorInfo.email} • {editorInfo.yaas_id}</div>
+                </div>
+                <button type="button" onClick={() => setShowHistory(false)}><X size={20} /></button>
+              </div>
+
+              {/* LIFETIME STATS */}
+              {lifetimeStats && (
+                <div className="mt-6 grid grid-cols-3 md:grid-cols-6 gap-3 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                  <div><div className="text-xs text-blue-500 uppercase font-bold">Reports</div><div className="text-xl font-bold text-slate-800">{lifetimeStats.totalReports}</div></div>
+                  <div><div className="text-xs text-blue-500 uppercase font-bold">Avg Hygiene</div><div className="text-xl font-bold text-slate-800">{lifetimeStats.avgHygiene}</div></div>
+                  <div><div className="text-xs text-blue-500 uppercase font-bold">Total SF</div><div className="text-xl font-bold text-slate-800">{lifetimeStats.totalSF}</div></div>
+                  <div><div className="text-xs text-blue-500 uppercase font-bold">Total LF</div><div className="text-xl font-bold text-slate-800">{lifetimeStats.totalLF}</div></div>
+                  <div><div className="text-xs text-blue-500 uppercase font-bold">Total Mins</div><div className="text-xl font-bold text-slate-800">{lifetimeStats.totalMins}</div></div>
+                  <div><div className="text-xs text-blue-500 uppercase font-bold">Approved</div><div className="text-xl font-bold text-slate-800">{lifetimeStats.totalApproved}</div></div>
+                </div>
+              )}
+
+              {/* WEEK FILTER */}
+              {weekFilterOptions.length > 0 && (
+                <div className="mt-4 flex items-center gap-2">
+                  <label className="text-xs font-semibold text-slate-600 whitespace-nowrap">Filter by Week:</label>
+                  <select
+                    value={selectedWeekFilter}
+                    onChange={e => setSelectedWeekFilter(e.target.value)}
+                    className="flex-1 text-sm p-1.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">All Weeks ({historyReports.length} reports)</option>
+                    {weekFilterOptions.map(w => <option key={w} value={w}>{w}</option>)}
+                  </select>
+                  {selectedWeekFilter && (
+                    <button type="button" onClick={() => setSelectedWeekFilter('')} className="text-slate-400 hover:text-red-500 transition" title="Clear filter">
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* SCROLLABLE REPORTS LIST */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {loadingHistory ? (
+                <div className="text-center py-10 text-slate-500">Loading your history...</div>
+              ) : filteredHistoryReports.length === 0 ? (
+                <div className="text-center py-10 text-slate-400">
+                  {selectedWeekFilter ? 'No report for this week.' : 'No reports submitted yet.'}
+                </div>
+              ) : (
+                filteredHistoryReports.map(r => (
+                  <div key={r.id} className="bg-white border rounded-xl overflow-hidden shadow-sm">
+
+                    {/* REPORT CARD HEADER */}
+                    <div className="bg-slate-50 p-3 border-b flex justify-between font-bold text-sm text-slate-700">
+                      <span>{r.week_label}</span>
+                      <span>{new Date(r.submission_date).toLocaleDateString()}</span>
+                    </div>
+
+                    {/* GENERAL METRICS ROW */}
+                    <div className="px-4 pt-3 pb-2 flex flex-wrap gap-2 border-b border-slate-100">
+                      <span className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded font-medium border border-slate-200">
+                        Hygiene: {r.hygiene_score ?? '—'}
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded font-medium border ${r.mistakes_repeated ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                        Mistakes: {r.mistakes_repeated ? 'Yes' : 'No'}
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded font-medium border ${r.delays ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                        Delays: {r.delays ? 'Yes' : 'No'}
+                      </span>
+                    </div>
+
+                    {/* IP BREAKDOWN */}
+                    <div className="p-4 space-y-3">
+                      {r.ip_data && r.ip_data.map((ip: any, i: number) => {
+                        const sf = ip.sf_daily !== undefined ? ip.sf_daily : (ip.reels_delivered || 0)
+                        const sfNote = ip.sf_daily_note || (ip.reels_delivered !== undefined ? '(Legacy)' : '')
+                        const lf = ip.lf_daily || 0
+                        const lfNote = ip.lf_daily_note || ''
+                        const totalMins = ip.total_minutes || 0
+                        const totalNote = ip.total_minutes_note || ''
+                        return (
+                          <div key={i} className="bg-slate-50 p-3 rounded border text-xs flex flex-col gap-2">
+                            <div className="font-bold text-slate-800 text-sm">{ip.ip_name}</div>
+                            <div className="flex flex-wrap gap-2">
+                              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium border border-blue-200" title={sfNote}>
+                                SF (Week): {sf}{sfNote && ' *'}
+                              </span>
+                              <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded font-medium border border-purple-200" title={lfNote}>
+                                LF (Week): {lf}{lfNote && ' *'}
+                              </span>
+                              {totalMins > 0 && (
+                                <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded font-medium border border-orange-200" title={totalNote}>
+                                  Total: {totalMins}m{totalNote && ' *'}
+                                </span>
+                              )}
+                              <span className="bg-green-100 text-green-800 px-2 py-1 rounded font-medium border border-green-200">
+                                Appr: {ip.approved_reels || 0}
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                  </div>
+                ))
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
