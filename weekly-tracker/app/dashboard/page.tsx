@@ -249,7 +249,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-3">
             <button type="button" onClick={fetchHistory} className="text-sm text-blue-600 flex items-center gap-1.5 font-medium hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition border border-blue-200">
-              <History size={16} /> My History
+              <History size={16} /> My Responses
             </button>
             <button type="button" onClick={() => supabase.auth.signOut().then(() => router.push('/'))} className="text-sm text-red-500 flex items-center gap-1 font-medium hover:text-red-700">
               <LogOut size={16} /> Sign Out
