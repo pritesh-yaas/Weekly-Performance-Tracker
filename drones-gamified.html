@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>DRONE ARMOURY</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+
+body{
+  background:#000;
+  display:flex;justify-content:center;align-items:center;
+  min-height:100vh;font-family:'Rajdhani',sans-serif;overflow:hidden;
+}
+
+/* ── 16:9 screen ─────────────────────────────────────────────── */
+.screen{
+  position:relative;
+  width:min(100vw,calc(100vh*16/9));
+  height:min(100vh,calc(100vw*9/16));
+  background:#0d0f15;
+  display:grid;
+  grid-template-rows:8% 72% 20%;
+  overflow:hidden;
+}
+
+/* subtle noise grain */
+.screen::after{
+  content:'';position:absolute;inset:0;z-index:200;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  background-size:200px 200px;pointer-events:none;opacity:.5;
+}
+
+/* ── HEADER ──────────────────────────────────────────────────── */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 1.5%;
+  background:linear-gradient(180deg,#191c26 0%,#13151f 100%);
+  border-bottom:1px solid rgba(255,255,255,.07);
+  z-index:10;position:relative;
+}
+.hdr-brand{
+  display:flex;align-items:center;gap:.8%;
+  font-family:'Orbitron',sans-serif;
+}
+.hdr-icon{
+  width:2.2em;height:2.2em;
+  background:rgba(192,37,42,.15);border:1px solid rgba(192,37,42,.4);
+  border-radius:3px;display:flex;align-items:center;justify-content:center;
+  color:#c0252a;font-size:.9em;font-weight:900;
+}
+.hdr-title{color:#e8eaf0;font-size:.9em;font-weight:700;letter-spacing:.25em;}
+.hdr-sep{color:rgba(255,255,255,.2);margin:0 .6%;}
+
+.hdr-tabs{display:flex;gap:.5%;align-items:center;}
+.hdr-tab{
+  font-size:.65em;letter-spacing:.15em;color:#5a6a7a;
+  padding:.3em .8em;cursor:pointer;transition:color .2s;
+  border-bottom:2px solid transparent;
+}
+.hdr-tab.active,.hdr-tab:hover{color:#e8eaf0;border-bottom-color:#c0252a;}
+
+.hdr-right{display:flex;align-items:center;gap:1%;}
+.back-btn{
+  font-family:'Orbitron',sans-serif;
+  font-size:.65em;font-weight:700;letter-spacing:.18em;
+  background:#c0252a;color:#fff;
+  padding:.5em 1.2em;border-radius:3px;border:none;cursor:pointer;
+  display:flex;align-items:center;gap:.5em;
+  box-shadow:0 0 12px rgba(192,37,42,.4);
+  transition:background .2s;
+}
+.back-btn:hover{background:#d42d32;}
+.back-btn svg{width:1em;height:1em;}
+
+/* ── MAIN CONTENT AREA ───────────────────────────────────────── */
+.main-area{
+  display:grid;
+  grid-template-columns:16% 52% 32%;
+  position:relative;z-index:10;
+  overflow:hidden;
+}
+
+/* ── SIDEBAR ─────────────────────────────────────────────────── */
+.sidebar{
+  background:#10121a;
+  border-right:1px solid rgba(255,255,255,.06);
+  display:flex;flex-direction:column;
+  padding:4% 6% 4%;
+  gap:4%;
+  overflow:hidden;
+}
+.cat-btn{
+  background:transparent;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:2px;
+  color:#8a9aaa;
+  font-family:'Rajdhani',sans-serif;
+  font-size:.75em;font-weight:600;letter-spacing:.15em;
+  padding:.55em .8em;
+  cursor:pointer;text-align:left;
+  transition:all .2s;position:relative;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.cat-btn::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:0;
+  background:#c0252a;transition:width .2s;
+}
+.cat-btn.active,
+.cat-btn:hover{color:#f0f2f5;border-color:rgba(255,255,255,.25);}
+.cat-btn.active::before{width:3px;}
+.cat-btn.active{
+  background:rgba(192,37,42,.08);
+  border-color:rgba(192,37,42,.35);
+  padding-left:calc(.8em + 4px);
+}
+
+/* ── CENTER DISPLAY ──────────────────────────────────────────── */
+.display-area{
+  position:relative;
+  background:
+    radial-gradient(ellipse at 50% 80%, rgba(30,35,50,.8) 0%, transparent 70%),
+    linear-gradient(180deg,#0a0b11 0%,#0e1018 60%,#080910 100%);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  overflow:hidden;
+}
+
+/* floor reflection line */
+.display-area::after{
+  content:'';position:absolute;bottom:22%;left:10%;right:10%;
+  height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent);
+}
+
+/* floor radial glow */
+.floor-glow{
+  position:absolute;bottom:16%;left:50%;transform:translateX(-50%);
+  width:60%;height:8%;
+  border-radius:50%;
+  background:radial-gradient(ellipse,var(--accent-glow,rgba(192,37,42,.15)) 0%,transparent 70%);
+  pointer-events:none;
+}
+
+.drone-svg-wrap{
+  width:68%;max-height:72%;
+  display:flex;align-items:center;justify-content:center;
+  filter:drop-shadow(0 0 20px var(--accent-glow,rgba(192,37,42,.3)));
+  transition:filter .4s;
+}
+.drone-svg-wrap svg{width:100%;height:auto;}
+
+.rarity-tag{
+  position:absolute;bottom:24%;
+  background:var(--rarity-bg,#1e3a8a);
+  border:1px solid var(--rarity-border,#2563eb);
+  color:var(--rarity-color,#60a5fa);
+  font-family:'Orbitron',sans-serif;
+  font-size:.55em;font-weight:700;letter-spacing:.25em;
+  padding:.35em 1.2em;border-radius:2px;
+  display:flex;align-items:center;gap:.6em;
+}
+.rarity-icon{width:1.2em;height:1.2em;opacity:.8;}
+
+.class-chip{
+  position:absolute;top:4%;left:4%;
+  font-size:.5em;letter-spacing:.2em;
+  color:rgba(255,255,255,.35);
+  font-family:'Share Tech Mono',monospace;
+}
+
+/* ── STATS PANEL ─────────────────────────────────────────────── */
+.stats-panel{
+  background:#12141c;
+  border-left:1px solid rgba(255,255,255,.06);
+  display:flex;flex-direction:column;
+  padding:3% 5%;
+  gap:0;overflow:hidden;
+}
+
+.drone-name-row{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  margin-bottom:3%;
+}
+.drone-name-big{
+  font-family:'Orbitron',sans-serif;
+  font-size:1em;font-weight:900;
+  color:#eef0f5;letter-spacing:.08em;
+  line-height:1.1;
+}
+.name-badges{display:flex;gap:4%;margin-top:4%;}
+.name-badge{
+  font-family:'Share Tech Mono',monospace;
+  font-size:.42em;letter-spacing:.12em;
+  padding:.25em .6em;border-radius:2px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);color:#8a9aaa;
+  display:flex;align-items:center;gap:.4em;
+}
+.name-badge.highlight{
+  background:rgba(192,37,42,.1);
+  border-color:rgba(192,37,42,.35);
+  color:#e07070;
+}
+
+.threat-block{
+  text-align:right;
+}
+.threat-num{
+  font-family:'Orbitron',sans-serif;
+  font-size:1.6em;font-weight:900;
+  color:var(--accent,#c0252a);
+  text-shadow:0 0 10px var(--accent-glow,rgba(192,37,42,.5));
+  line-height:1;
+}
+.threat-lbl{
+  font-size:.42em;letter-spacing:.15em;color:#4a5a6a;
+  font-family:'Share Tech Mono',monospace;
+}
+
+/* stats grid: 2 columns, 3 rows */
+.stats-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:2% 4%;
+  margin-bottom:4%;
+  padding-bottom:4%;
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.stat-item{
+  display:flex;align-items:center;gap:6%;
+  padding:2.5% 0;
+  border-bottom:1px solid rgba(255,255,255,.04);
+}
+.stat-icon{
+  width:1.6em;height:1.6em;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  color:#4a6070;font-size:.8em;
+}
+.stat-icon svg{width:100%;height:100%;}
+.stat-info{flex:1;min-width:0;}
+.stat-lbl{
+  font-family:'Share Tech Mono',monospace;
+  font-size:.37em;letter-spacing:.15em;color:#4a6070;
+  display:block;
+}
+.stat-val{
+  font-family:'Rajdhani',sans-serif;
+  font-size:.75em;font-weight:700;letter-spacing:.05em;color:#d0d8e0;
+  display:block;white-space:nowrap;
+}
+.stat-num-big{
+  font-family:'Orbitron',sans-serif;
+  font-size:.8em;font-weight:700;color:#eef0f5;flex-shrink:0;
+  text-align:right;min-width:3ch;
+}
+
+/* action buttons */
+.action-row{
+  display:grid;grid-template-columns:1fr 1fr;gap:4%;
+  margin-bottom:3%;
+}
+.btn{
+  border:none;border-radius:2px;cursor:pointer;
+  font-family:'Rajdhani',sans-serif;font-size:.65em;
+  font-weight:700;letter-spacing:.2em;padding:.6em;
+  transition:all .2s;
+}
+.btn-ghost{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);color:#8a9aaa;
+}
+.btn-ghost:hover{background:rgba(255,255,255,.1);color:#d0d8e0;}
+.btn-red{background:#c0252a;color:#fff;box-shadow:0 0 10px rgba(192,37,42,.35);}
+.btn-red:hover{background:#d42d32;}
+
+.upgrade-row{
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:2px;padding:.5em .8em;margin-bottom:3%;cursor:pointer;
+  transition:background .2s;
+}
+.upgrade-row:hover{background:rgba(255,255,255,.07);}
+.upgrade-left{display:flex;align-items:center;gap:.6em;}
+.upgrade-icon{color:#ffd060;font-size:.8em;}
+.upgrade-text{font-size:.65em;letter-spacing:.2em;color:#c0c8d0;font-weight:700;}
+.upgrade-divider{color:rgba(255,255,255,.15);font-size:.65em;}
+.upgrade-cost{font-size:.65em;color:#ffd060;font-weight:700;letter-spacing:.1em;
+  display:flex;align-items:center;gap:.4em;}
+
+/* description */
+.desc-title{
+  font-family:'Share Tech Mono',monospace;
+  font-size:.42em;letter-spacing:.2em;color:#4a6070;margin-bottom:2%;
+}
+.desc-text{
+  font-size:.58em;line-height:1.55;color:#5a7080;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;line-clamp:4;
+  -webkit-box-orient:vertical;
+}
+
+/* ── BOTTOM CAROUSEL ─────────────────────────────────────────── */
+.carousel{
+  background:#0c0e16;
+  border-top:1px solid rgba(255,255,255,.06);
+  display:flex;align-items:center;
+  padding:0 1%;
+  gap:.8%;
+  overflow-x:auto;overflow-y:hidden;
+  z-index:10;position:relative;
+  scrollbar-width:none;
+}
+.carousel::-webkit-scrollbar{display:none;}
+
+.drone-card{
+  flex-shrink:0;
+  width:calc(14% - .4%);
+  height:82%;
+  border-radius:3px;border:1px solid rgba(255,255,255,.08);
+  background:#13151f;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:space-between;
+  padding:4% 5% 3%;
+  cursor:pointer;transition:all .2s;
+  position:relative;overflow:hidden;
+}
+.drone-card:hover{border-color:rgba(255,255,255,.2);background:#1a1d2a;}
+.drone-card.selected{
+  background:#1c1f2e;
+  border-color:rgba(192,37,42,.6);
+  box-shadow:0 0 0 1px rgba(192,37,42,.2),inset 0 0 12px rgba(192,37,42,.05);
+}
+.drone-card.selected::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,#c0252a,transparent);
+}
+.drone-card.dimmed{opacity:.45;}
+
+.card-mini-svg{width:80%;height:50%;display:flex;align-items:center;justify-content:center;}
+.card-mini-svg svg{width:100%;height:auto;}
+
+.card-name{
+  font-size:.45em;font-weight:700;letter-spacing:.1em;
+  color:#8a9aaa;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;
+}
+.drone-card.selected .card-name{color:#e0e8f0;}
+
+.card-flag{font-size:.7em;line-height:1;}
+
+.buy-btn{
+  background:#c0252a;color:#fff;border:none;border-radius:2px;
+  font-family:'Rajdhani',sans-serif;font-size:.38em;
+  font-weight:700;letter-spacing:.15em;
+  padding:.3em .8em;cursor:pointer;width:100%;
+  transition:background .2s;
+}
+.buy-btn:hover{background:#d42d32;}
+
+/* ── TRANSITIONS ─────────────────────────────────────────────── */
+.display-area,.stats-panel,.sidebar{transition:background .3s;}
+.drone-svg-wrap{transition:opacity .25s,transform .25s;}
+.drone-svg-wrap.fade{opacity:0;transform:scale(.96);}
+
+/* ── REAL DRONE IMAGES ────────────────────────────────────────── */
+.drone-img{
+  width:100%;height:100%;
+  object-fit:contain;max-height:100%;
+  border-radius:4px;
+  filter:contrast(1.05) saturate(0.88) brightness(0.92);
+  transition:filter .3s;
+}
+.drone-svg-wrap:hover .drone-img{filter:contrast(1.1) saturate(1.0) brightness(1.0);}
+.card-mini-img{
+  width:90%;height:58%;object-fit:contain;
+  filter:saturate(0.7) brightness(0.75);
+  border-radius:2px;
+}
+.drone-card.selected .card-mini-img{filter:saturate(0.95) brightness(0.9);}
+</style>
+</head>
+<body>
+<div class="screen" id="screen">
+
+<!-- ═══ HEADER ════════════════════════════════════════════════ -->
+<header>
+  <div class="hdr-brand">
+    <div class="hdr-icon">D</div>
+    <span class="hdr-sep">|</span>
+    <span class="hdr-title">ARMOURY</span>
+  </div>
+  <div class="hdr-tabs">
+    <span class="hdr-tab active">DRONES</span>
+    <span class="hdr-tab">WEAPONS</span>
+    <span class="hdr-tab">INTEL</span>
+  </div>
+  <div class="hdr-right">
+    <button class="back-btn">
+      BACK TO LOBBY
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0l8 8-8 8-1.4-1.4 5.6-5.6H0V7h12.2L6.6 1.4z"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- ═══ MAIN ══════════════════════════════════════════════════ -->
+<div class="main-area">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <button class="cat-btn active" data-cat="ALL">ALL DRONES</button>
+    <button class="cat-btn" data-cat="CONSUMABLE">CONSUMABLE</button>
+    <button class="cat-btn" data-cat="REUSABLE">REUSABLE</button>
+    <button class="cat-btn" data-cat="NANO">NANO CLASS</button>
+    <button class="cat-btn" data-cat="TACTICAL">TACTICAL UAV</button>
+    <button class="cat-btn" data-cat="MALE">MALE CLASS</button>
+  </aside>
+
+  <!-- CENTER DISPLAY -->
+  <div class="display-area" id="displayArea">
+    <span class="class-chip" id="classChip">NANO / MICRO</span>
+    <div class="floor-glow" id="floorGlow"></div>
+    <div class="drone-svg-wrap" id="droneSvgWrap"></div>
+    <div class="rarity-tag" id="rarityTag">
+      <svg class="rarity-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0l2 5h5l-4 3 1.5 5L8 10l-4.5 3L5 8 1 5h5z"/></svg>
+      <span id="rarityText">RARE</span>
+    </div>
+  </div>
+
+  <!-- STATS PANEL -->
+  <div class="stats-panel">
+    <div class="drone-name-row">
+      <div>
+        <div class="drone-name-big" id="droneName">FPV KAMIKAZE</div>
+        <div class="name-badges">
+          <span class="name-badge" id="badge1">🇺🇦 &nbsp;UKRAINE</span>
+          <span class="name-badge highlight" id="badge2">MULTI-ROTOR</span>
+        </div>
+      </div>
+      <div class="threat-block">
+        <div class="threat-num" id="threatNum">72</div>
+        <div class="threat-lbl">THREAT</div>
+      </div>
+    </div>
+
+    <div class="stats-grid" id="statsGrid">
+      <!-- injected by JS -->
+    </div>
+
+    <div class="action-row">
+      <button class="btn btn-ghost">ANALYZE</button>
+      <button class="btn btn-red">DEPLOY</button>
+    </div>
+
+    <div class="upgrade-row">
+      <div class="upgrade-left">
+        <span class="upgrade-icon">⬆</span>
+        <span class="upgrade-text">UPGRADE</span>
+        <span class="upgrade-divider">|</span>
+      </div>
+      <div class="upgrade-cost" id="upgradeCost">◎ &nbsp;$500</div>
+    </div>
+
+    <div class="desc-title">DESCRIPTION</div>
+    <div class="desc-text" id="descText">Loading...</div>
+  </div>
+</div>
+
+<!-- ═══ CAROUSEL ══════════════════════════════════════════════ -->
+<div class="carousel" id="carousel">
+  <!-- injected by JS -->
+</div>
+
+</div><!-- /screen -->
+
+<script>
+/* ══ DRONE DATA ═══════════════════════════════════════════════════════ */
+const DRONES = [
+  {
+    id:'fpv',
+    name:'FPV KAMIKAZE',
+    country:'🇺🇦 UKRAINE',
+    airframe:'MULTI-ROTOR',
+    categories:['CONSUMABLE','NANO'],
+    rarity:'RARE',
+    rarityBg:'#1e3060',rarityBorder:'#2563eb',rarityColor:'#93c5fd',
+    threat:72,
+    accentHex:'#e04040',accentGlow:'rgba(224,64,64,0.35)',
+    cost:'$500',
+    stats:[
+      {icon:'range', lbl:'RANGE',    val:'10 km',  num:'10'},
+      {icon:'speed', lbl:'SPEED',    val:'120 km/h',num:'120'},
+      {icon:'alt',   lbl:'ALTITUDE', val:'500 m',  num:'0.5'},
+      {icon:'time',  lbl:'ENDURANCE',val:'25 min', num:'0.4'},
+      {icon:'pay',   lbl:'PAYLOAD',  val:'300 g',  num:'0.3'},
+      {icon:'cost',  lbl:'VALUE IDX',val:'99/100', num:'99'},
+    ],
+    desc:'Multi-rotor FPV drone used by Ukraine on the frontline. At just $500, they are mass-produced at 200,000 units per month — a 10× scale-up in a single year. Carries an explosive payload for close-range strikes against armored vehicles and personnel. The backbone of modern asymmetric drone warfare.',
+    svg:`<svg viewBox="0 0 280 280" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="rg1" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
+          <stop offset="100%" stop-color="#8899aa" stop-opacity="0.7"/>
+        </radialGradient>
+        <filter id="gf1"><feGaussianBlur stdDeviation="3" result="b"/><feComposite in="SourceGraphic" in2="b" operator="over"/></filter>
+      </defs>
+      <!-- shadow ellipse -->
+      <ellipse cx="140" cy="240" rx="70" ry="14" fill="rgba(0,0,0,0.5)"/>
+      <!-- arms -->
+      <line x1="140" y1="140" x2="60"  y2="60"  stroke="url(#rg1)" stroke-width="10" stroke-linecap="round"/>
+      <line x1="140" y1="140" x2="220" y2="60"  stroke="url(#rg1)" stroke-width="10" stroke-linecap="round"/>
+      <line x1="140" y1="140" x2="60"  y2="220" stroke="url(#rg1)" stroke-width="10" stroke-linecap="round"/>
+      <line x1="140" y1="140" x2="220" y2="220" stroke="url(#rg1)" stroke-width="10" stroke-linecap="round"/>
+      <!-- motor mounts -->
+      <circle cx="58"  cy="58"  r="14" fill="#5a6a7a" stroke="#99aabb" stroke-width="2"/>
+      <circle cx="222" cy="58"  r="14" fill="#5a6a7a" stroke="#99aabb" stroke-width="2"/>
+      <circle cx="58"  cy="222" r="14" fill="#5a6a7a" stroke="#99aabb" stroke-width="2"/>
+      <circle cx="222" cy="222" r="14" fill="#5a6a7a" stroke="#99aabb" stroke-width="2"/>
+      <!-- rotor discs (blurred) -->
+      <ellipse cx="58"  cy="58"  rx="28" ry="10" fill="none" stroke="rgba(180,200,220,0.45)" stroke-width="2" transform="rotate(-45 58 58)"/>
+      <ellipse cx="222" cy="58"  rx="28" ry="10" fill="none" stroke="rgba(180,200,220,0.45)" stroke-width="2" transform="rotate(45 222 58)"/>
+      <ellipse cx="58"  cy="222" rx="28" ry="10" fill="none" stroke="rgba(180,200,220,0.45)" stroke-width="2" transform="rotate(45 58 222)"/>
+      <ellipse cx="222" cy="222" rx="28" ry="10" fill="none" stroke="rgba(180,200,220,0.45)" stroke-width="2" transform="rotate(-45 222 222)"/>
+      <!-- body -->
+      <rect x="116" y="116" width="48" height="48" rx="5" fill="#4a5566" stroke="#8899aa" stroke-width="2"/>
+      <rect x="124" y="124" width="32" height="32" rx="3" fill="#2a3040"/>
+      <!-- camera -->
+      <circle cx="140" cy="140" r="9" fill="#111" stroke="#e04040" stroke-width="1.5"/>
+      <circle cx="140" cy="140" r="5" fill="#070a0d"/>
+      <circle cx="138" cy="138" r="1.5" fill="rgba(255,255,255,0.3)"/>
+      <!-- antenna -->
+      <line x1="140" y1="116" x2="140" y2="90" stroke="#8899aa" stroke-width="2"/>
+      <circle cx="140" cy="88" r="3" fill="#e04040"/>
+    </svg>`,
+    miniSvg:`<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <line x1="40" y1="40" x2="18" y2="18" stroke="#8899aa" stroke-width="4" stroke-linecap="round"/>
+      <line x1="40" y1="40" x2="62" y2="18" stroke="#8899aa" stroke-width="4" stroke-linecap="round"/>
+      <line x1="40" y1="40" x2="18" y2="62" stroke="#8899aa" stroke-width="4" stroke-linecap="round"/>
+      <line x1="40" y1="40" x2="62" y2="62" stroke="#8899aa" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="40" cy="40" r="7" fill="#3a4a5a"/>
+      <circle cx="17" cy="17" r="6" fill="#3a4a5a" stroke="#6a7a8a" stroke-width="1"/>
+      <circle cx="63" cy="17" r="6" fill="#3a4a5a" stroke="#6a7a8a" stroke-width="1"/>
+      <circle cx="17" cy="63" r="6" fill="#3a4a5a" stroke="#6a7a8a" stroke-width="1"/>
+      <circle cx="63" cy="63" r="6" fill="#3a4a5a" stroke="#6a7a8a" stroke-width="1"/>
+    </svg>`,
+  },
+  {
+    id:'shahed',
+    name:'SHAHED-136',
+    country:'🇮🇷 IRAN',
+    airframe:'FIXED-WING',
+    categories:['CONSUMABLE'],
+    rarity:'EPIC',
+    rarityBg:'#3b1060',rarityBorder:'#7c3aed',rarityColor:'#c4b5fd',
+    threat:85,
+    accentHex:'#9955ee',accentGlow:'rgba(153,85,238,0.35)',
+    cost:'$20,000',
+    stats:[
+      {icon:'range', lbl:'RANGE',    val:'2,500 km', num:'2500'},
+      {icon:'speed', lbl:'SPEED',    val:'185 km/h', num:'185'},
+      {icon:'alt',   lbl:'ALTITUDE', val:'3,000 m',  num:'3.0'},
+      {icon:'time',  lbl:'ENDURANCE',val:'13 hrs',   num:'13'},
+      {icon:'pay',   lbl:'PAYLOAD',  val:'50 kg',    num:'50'},
+      {icon:'cost',  lbl:'VALUE IDX',val:'82/100',   num:'82'},
+    ],
+    desc:'Delta-wing loitering munition developed by Iran. At $20,000 per unit — 40× the price of a Ukrainian FPV — it compensates with massive 2,500 km range and autonomous targeting set before launch. No operator needed in flight. Widely exported to Russia and used against Ukraine and across the Middle East.',
+    svg:`<svg viewBox="0 0 300 260" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="fw" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#c8d0dc"/>
+          <stop offset="100%" stop-color="#5a6070"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="150" cy="230" rx="80" ry="12" fill="rgba(0,0,0,0.5)"/>
+      <!-- delta wings -->
+      <path d="M150 40 L280 200 L150 175 Z" fill="#5a6272" stroke="#8090a0" stroke-width="1.5"/>
+      <path d="M150 40 L20  200 L150 175 Z" fill="#6a7282" stroke="#8090a0" stroke-width="1.5"/>
+      <!-- wing top highlight -->
+      <path d="M150 40 L230 160 L150 145" fill="rgba(200,210,220,0.12)"/>
+      <path d="M150 40 L70  160 L150 145" fill="rgba(200,210,220,0.12)"/>
+      <!-- fuselage -->
+      <rect x="143" y="30" width="14" height="160" rx="7" fill="url(#fw)"/>
+      <!-- nose cone -->
+      <ellipse cx="150" cy="30" rx="7" ry="14" fill="#d0d8e0"/>
+      <!-- tail fins -->
+      <path d="M150 175 L168 210 L150 190 Z" fill="#5a6070" stroke="#7a8090" stroke-width="1"/>
+      <path d="M150 175 L132 210 L150 190 Z" fill="#5a6070" stroke="#7a8090" stroke-width="1"/>
+      <!-- rear engine/propeller -->
+      <circle cx="150" cy="195" r="10" fill="#3a3f4a" stroke="#6a7080" stroke-width="1.5"/>
+      <ellipse cx="150" cy="195" rx="22" ry="6" fill="none" stroke="rgba(180,190,200,0.4)" stroke-width="2"/>
+      <!-- intake markings -->
+      <line x1="143" y1="80"  x2="143" y2="130" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+      <line x1="157" y1="80"  x2="157" y2="130" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+    </svg>`,
+    miniSvg:`<svg viewBox="0 0 80 70" xmlns="http://www.w3.org/2000/svg">
+      <path d="M40 10 L74 56 L40 48 Z" fill="#4a5262"/>
+      <path d="M40 10 L6  56 L40 48 Z" fill="#4a5262"/>
+      <rect x="37" y="8" width="6" height="48" rx="3" fill="#7a8292"/>
+    </svg>`,
+  },
+  {
+    id:'nagastra',
+    name:'NAGASTRA-1',
+    country:'🇮🇳 INDIA',
+    airframe:'FIXED-WING',
+    categories:['CONSUMABLE'],
+    rarity:'RARE',
+    rarityBg:'#1e3060',rarityBorder:'#2563eb',rarityColor:'#93c5fd',
+    threat:68,
+    accentHex:'#3080ee',accentGlow:'rgba(48,128,238,0.35)',
+    cost:'~$30K',
+    stats:[
+      {icon:'range', lbl:'RANGE',    val:'30 km',   num:'30'},
+      {icon:'speed', lbl:'SPEED',    val:'~100 km/h',num:'100'},
+      {icon:'alt',   lbl:'ALTITUDE', val:'4,500 m',  num:'4.5'},
+      {icon:'time',  lbl:'ENDURANCE',val:'60 min',   num:'1'},
+      {icon:'pay',   lbl:'PAYLOAD',  val:'1.5 kg',   num:'1.5'},
+      {icon:'cost',  lbl:'INDIGENOU',val:'80%+',     num:'80'},
+    ],
+    desc:'India\'s first indigenous loitering munition by Solar Industries. 480+ units delivered to the Indian Army with 2m CEP accuracy via NavIC/GPS guidance. Low acoustic signature electric propulsion. Combat-proven in Operation Sindoor. Offers parachute recovery mode for training — making it both a weapon and a practice tool.',
+    svg:`<svg viewBox="0 0 280 260" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="ng" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#d0dce8"/>
+          <stop offset="100%" stop-color="#485868"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="140" cy="230" rx="70" ry="11" fill="rgba(0,0,0,0.45)"/>
+      <!-- main straight wings -->
+      <path d="M130 120 L10 138 L130 148 Z" fill="#566272" stroke="#7a8898" stroke-width="1.5"/>
+      <path d="M150 120 L270 138 L150 148 Z" fill="#566272" stroke="#7a8898" stroke-width="1.5"/>
+      <!-- wing highlight -->
+      <path d="M130 120 L30 134 L130 134" fill="rgba(210,220,230,0.1)"/>
+      <path d="M150 120 L250 134 L150 134" fill="rgba(210,220,230,0.1)"/>
+      <!-- fuselage (slender) -->
+      <ellipse cx="140" cy="130" rx="6" ry="90" fill="url(#ng)"/>
+      <!-- nose -->
+      <ellipse cx="140" cy="42" rx="6" ry="12" fill="#e0e8f0"/>
+      <!-- tail feathers -->
+      <path d="M136 195 L120 225 L140 208 L160 225 L144 195 Z" fill="#5a6878" stroke="#8898a8" stroke-width="1"/>
+      <!-- pusher prop -->
+      <circle cx="140" cy="212" r="9" fill="#2a3040" stroke="#5a6878" stroke-width="1.5"/>
+      <ellipse cx="140" cy="212" rx="20" ry="5" fill="none" stroke="rgba(180,190,200,0.45)" stroke-width="2"/>
+      <!-- warhead section -->
+      <rect x="135" y="48" width="10" height="25" rx="3" fill="#c04040" opacity="0.7"/>
+      <!-- sensor seeker -->
+      <circle cx="140" cy="44" r="5" fill="#222" stroke="#3080ee" stroke-width="1.5"/>
+    </svg>`,
+    miniSvg:`<svg viewBox="0 0 80 70" xmlns="http://www.w3.org/2000/svg">
+      <path d="M36 34 L4 40 L36 43 Z" fill="#485868"/>
+      <path d="M44 34 L76 40 L44 43 Z" fill="#485868"/>
+      <ellipse cx="40" cy="38" rx="4" ry="28" fill="#6a7a8a"/>
+    </svg>`,
+  },
+  {
+    id:'switch',
+    name:'IDEAFORGE SWITCH',
+    country:'🇮🇳 INDIA',
+    airframe:'VTOL HYBRID',
+    categories:['REUSABLE','TACTICAL'],
+    rarity:'UNCOMMON',
+    rarityBg:'#0d3a2a',rarityBorder:'#059669',rarityColor:'#6ee7b7',
+    threat:45,
+    accentHex:'#10b981',accentGlow:'rgba(16,185,129,0.3)',
+    cost:'~$50K',
+    stats:[
+      {icon:'range', lbl:'RANGE',    val:'15 km',  num:'15'},
+      {icon:'speed', lbl:'SPEED',    val:'~80 km/h',num:'80'},
+      {icon:'alt',   lbl:'ALTITUDE', val:'4,000 m', num:'4.0'},
+      {icon:'time',  lbl:'ENDURANCE',val:'2 hrs',   num:'2'},
+      {icon:'pay',   lbl:'WEIGHT',   val:'6.5 kg',  num:'6.5'},
+      {icon:'cost',  lbl:'INDIGENOU',val:'60%',     num:'60'},
+    ],
+    desc:'IdeaForge\'s flagship VTOL hybrid ISR drone — the "3 Idiots drone," originally a Bollywood prop. 20 years of refinement resulted in India\'s premier tactical surveillance UAV. Battle-tested in Operation Sindoor. Features 25× optical zoom + thermal imaging. Rapid deploy with no runway needed. Backbone of Indian Army frontline recon.',
+    svg:`<svg viewBox="0 0 300 240" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="vt" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#c8dce8"/>
+          <stop offset="100%" stop-color="#4a6070"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="150" cy="216" rx="75" ry="11" fill="rgba(0,0,0,0.45)"/>
+      <!-- fuselage -->
+      <rect x="140" y="50" width="20" height="130" rx="8" fill="url(#vt)"/>
+      <!-- fixed wing -->
+      <path d="M140 100 L8  118 L140 126 Z" fill="#5a7080" stroke="#8098a8" stroke-width="1.5"/>
+      <path d="M160 100 L292 118 L160 126 Z" fill="#5a7080" stroke="#8098a8" stroke-width="1.5"/>
+      <!-- VTOL rotors on wing tips -->
+      <circle cx="28"  cy="117" r="7" fill="#3a4a5a" stroke="#6a8090" stroke-width="1.5"/>
+      <ellipse cx="28" cy="117" rx="22" ry="6" fill="none" stroke="rgba(180,200,210,0.4)" stroke-width="2"/>
+      <circle cx="272" cy="117" r="7" fill="#3a4a5a" stroke="#6a8090" stroke-width="1.5"/>
+      <ellipse cx="272" cy="117" rx="22" ry="6" fill="none" stroke="rgba(180,200,210,0.4)" stroke-width="2"/>
+      <!-- nose -->
+      <ellipse cx="150" cy="52" rx="8" ry="14" fill="#dce8f0"/>
+      <!-- camera gimbal -->
+      <circle cx="150" cy="130" r="11" fill="#2a3840" stroke="#4a6878" stroke-width="1.5"/>
+      <circle cx="150" cy="130" r="6" fill="#111" stroke="#10b981" stroke-width="1"/>
+      <!-- tail section -->
+      <path d="M144 175 L130 200 L150 185 L170 200 L156 175 Z" fill="#5a7080" stroke="#7a9098" stroke-width="1"/>
+      <!-- wing struts -->
+      <line x1="140" y1="110" x2="100" y2="118" stroke="#3a5060" stroke-width="1" stroke-dasharray="3 3"/>
+      <line x1="160" y1="110" x2="200" y2="118" stroke="#3a5060" stroke-width="1" stroke-dasharray="3 3"/>
+    </svg>`,
+    miniSvg:`<svg viewBox="0 0 80 70" xmlns="http://www.w3.org/2000/svg">
+      <rect x="36" y="16" width="8" height="40" rx="4" fill="#5a7080"/>
+      <path d="M36 30 L4 38 L36 42 Z" fill="#4a6070"/>
+      <path d="M44 30 L76 38 L44 42 Z" fill="#4a6070"/>
+      <ellipse cx="12" cy="38" rx="8" ry="3" fill="none" stroke="#6a8090" stroke-width="1.5"/>
+      <ellipse cx="68" cy="38" rx="8" ry="3" fill="none" stroke="#6a8090" stroke-width="1.5"/>
+    </svg>`,
+  },
+  {
+    id:'mq9b',
+    name:'MQ-9B SKYGUARDIAN',
+    country:'🇺🇸 USA',
+    airframe:'FIXED-WING',
+    categories:['REUSABLE','MALE'],
+    rarity:'LEGENDARY',
+    rarityBg:'#3a2800',rarityBorder:'#d97706',rarityColor:'#fcd34d',
+    threat:98,
+    accentHex:'#f59e0b',accentGlow:'rgba(245,158,11,0.35)',
+    cost:'$99M',
+    stats:[
+      {icon:'range', lbl:'RANGE',    val:'2,200 km',num:'2200'},
+      {icon:'speed', lbl:'SPEED',    val:'311 km/h', num:'311'},
+      {icon:'alt',   lbl:'ALTITUDE', val:'15,000 m', num:'15.0'},
+      {icon:'time',  lbl:'ENDURANCE',val:'40+ hrs',  num:'40'},
+      {icon:'pay',   lbl:'PAYLOAD',  val:'2,155 kg', num:'2155'},
+      {icon:'cost',  lbl:'HARDPOINTS',val:'9 total', num:'9'},
+    ],
+    desc:'General Atomics MALE drone — the apex predator of unmanned warfare. India ordered 31 units for ₹30,000 crore ($4B). Armed with Hellfire missiles and laser-guided bombs. All-weather, satellite-linked, 40+ hour endurance. Operates at 50,000 ft — above commercial airspace. No comparable indigenous Indian MALE drone exists yet.',
+    svg:`<svg viewBox="0 0 340 220" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="ml" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#d8e0e8"/>
+          <stop offset="100%" stop-color="#5a6a78"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="170" cy="200" rx="90" ry="12" fill="rgba(0,0,0,0.5)"/>
+      <!-- very long wings -->
+      <path d="M155 100 L2   120 L155 128 Z" fill="#5a6a78" stroke="#8a9aa8" stroke-width="1.5"/>
+      <path d="M185 100 L338 120 L185 128 Z" fill="#5a6a78" stroke="#8a9aa8" stroke-width="1.5"/>
+      <!-- wing highlight -->
+      <path d="M155 100 L30 116 L155 112" fill="rgba(210,220,230,0.12)"/>
+      <path d="M185 100 L310 116 L185 112" fill="rgba(210,220,230,0.12)"/>
+      <!-- fuselage -->
+      <ellipse cx="170" cy="112" rx="10" ry="80" fill="url(#ml)"/>
+      <!-- nose sensor ball -->
+      <ellipse cx="170" cy="35" rx="13" ry="16" fill="#303840" stroke="#5a6a78" stroke-width="1.5"/>
+      <circle  cx="170" cy="35"  r="8"  fill="#1a2028" stroke="#f59e0b" stroke-width="1"/>
+      <!-- engine pod -->
+      <ellipse cx="170" cy="145" rx="9" ry="18" fill="#303840" stroke="#5a6a78" stroke-width="1.5"/>
+      <!-- tail boom / v-tail -->
+      <path d="M162 168 L144 195 L170 178 L196 195 L178 168 Z" fill="#5a6a78" stroke="#8a9aa8" stroke-width="1"/>
+      <!-- propeller disc -->
+      <ellipse cx="170" cy="183" rx="25" ry="7" fill="none" stroke="rgba(200,210,220,0.4)" stroke-width="2"/>
+      <!-- weapon pylons -->
+      <line x1="110" y1="118" x2="110" y2="134" stroke="#5a6a78" stroke-width="2"/>
+      <rect  x="98"  y="132" width="24" height="6" rx="3" fill="#c0252a" opacity="0.8"/>
+      <line x1="230" y1="118" x2="230" y2="134" stroke="#5a6a78" stroke-width="2"/>
+      <rect  x="218" y="132" width="24" height="6" rx="3" fill="#c0252a" opacity="0.8"/>
+      <!-- SAT link dome -->
+      <ellipse cx="170" cy="66" rx="11" ry="6" fill="rgba(255,255,255,0.1)" stroke="#7a8a98" stroke-width="1"/>
+    </svg>`,
+    miniSvg:`<svg viewBox="0 0 96 60" xmlns="http://www.w3.org/2000/svg">
+      <path d="M44 28 L2 36 L44 40 Z" fill="#4a5a68"/>
+      <path d="M52 28 L94 36 L52 40 Z" fill="#4a5a68"/>
+      <ellipse cx="48" cy="34" rx="6" ry="22" fill="#6a7a88"/>
+      <ellipse cx="48" cy="14" rx="5" ry="6" fill="#2a3038"/>
+    </svg>`,
+  },
+  {
+    id:'vbat',
+    name:'SHIELD AI V-BAT',
+    country:'🇺🇸 USA',
+    airframe:'VTOL DUCTED',
+    categories:['REUSABLE','TACTICAL'],
+    rarity:'RARE',
+    rarityBg:'#1e3060',rarityBorder:'#2563eb',rarityColor:'#93c5fd',
+    threat:62,
+    accentHex:'#3b82f6',accentGlow:'rgba(59,130,246,0.3)',
+    cost:'~$500K',
+    stats:[
+      {icon:'range', lbl:'RANGE',    val:'~100 km',  num:'100'},
+      {icon:'speed', lbl:'SPEED',    val:'167 km/h',  num:'167'},
+      {icon:'alt',   lbl:'ALTITUDE', val:'4,572 m',   num:'4.6'},
+      {icon:'time',  lbl:'ENDURANCE',val:'12+ hrs',   num:'12'},
+      {icon:'pay',   lbl:'PAYLOAD',  val:'11 kg',     num:'11'},
+      {icon:'cost',  lbl:'AUTONOMY', val:'GPS-DENIED', num:'AI'},
+    ],
+    desc:'Shield AI\'s ducted-fan VTOL tactical drone. JSW Defense invested $90M to manufacture it in India. Powered by Shield AI\'s Hivemind autonomy — operates fully in GPS/comms-denied environments. Vertical take-off, hover, then forward flight. Indian Army emergency procurement completed in Jan 2026. 3-metre tall platform fits in a pickup truck.',
+    svg:`<svg viewBox="0 0 220 300" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="vb" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#d0dce8"/>
+          <stop offset="100%" stop-color="#3a4a5a"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="110" cy="276" rx="55" ry="11" fill="rgba(0,0,0,0.5)"/>
+      <!-- ducted fan ring (top) -->
+      <ellipse cx="110" cy="50" rx="55" ry="16" fill="none" stroke="#6a8098" stroke-width="3"/>
+      <ellipse cx="110" cy="50" rx="40" ry="12" fill="rgba(200,215,230,0.12)" stroke="#8a9aaa" stroke-width="1.5"/>
+      <!-- fan blades (simplified) -->
+      <line x1="70"  y1="50" x2="150" y2="50" stroke="#5a6a7a" stroke-width="3" stroke-linecap="round"/>
+      <line x1="80"  y1="28" x2="140" y2="72" stroke="#5a6a7a" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+      <line x1="80"  y1="72" x2="140" y2="28" stroke="#5a6a7a" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+      <circle cx="110" cy="50" r="10" fill="#2a3a4a" stroke="#5a6a7a" stroke-width="2"/>
+      <!-- main cylinder body -->
+      <rect x="88" y="60" width="44" height="175" rx="18" fill="url(#vb)" stroke="#6a7a8a" stroke-width="1.5"/>
+      <!-- panel lines -->
+      <line x1="88"  y1="100" x2="132" y2="100" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+      <line x1="88"  y1="140" x2="132" y2="140" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+      <line x1="88"  y1="180" x2="132" y2="180" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+      <!-- sensor/camera nose area -->
+      <ellipse cx="110" cy="70" rx="16" ry="10" fill="#1a2530" stroke="#3b82f6" stroke-width="1.5"/>
+      <circle cx="110" cy="70" r="6" fill="#0a0f14"/>
+      <!-- side winglets -->
+      <path d="M88 140 L42 155 L88 158 Z" fill="#4a5a6a" stroke="#6a7a8a" stroke-width="1.5"/>
+      <path d="M132 140 L178 155 L132 158 Z" fill="#4a5a6a" stroke="#6a7a8a" stroke-width="1.5"/>
+      <!-- engine exhaust at bottom -->
+      <ellipse cx="110" cy="234" rx="16" ry="6" fill="#1a2530" stroke="#4a5a6a" stroke-width="1.5"/>
+      <!-- landing legs -->
+      <line x1="95"  y1="235" x2="80"  y2="265" stroke="#4a5a6a" stroke-width="3" stroke-linecap="round"/>
+      <line x1="125" y1="235" x2="140" y2="265" stroke="#4a5a6a" stroke-width="3" stroke-linecap="round"/>
+      <line x1="77"  y1="265" x2="97"  y2="265" stroke="#4a5a6a" stroke-width="3" stroke-linecap="round"/>
+      <line x1="123" y1="265" x2="143" y2="265" stroke="#4a5a6a" stroke-width="3" stroke-linecap="round"/>
+    </svg>`,
+    miniSvg:`<svg viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="30" cy="14" rx="18" ry="5" fill="none" stroke="#5a7080" stroke-width="2"/>
+      <rect x="22" y="17" width="16" height="46" rx="8" fill="#4a5a6a"/>
+      <path d="M22 38 L8 43 L22 45 Z" fill="#3a4a5a"/>
+      <path d="M38 38 L52 43 L38 45 Z" fill="#3a4a5a"/>
+    </svg>`,
+  },
+  {
+    id:'tapas',
+    name:'DRDO TAPAS BH-201',
+    country:'🇮🇳 INDIA',
+    airframe:'FIXED-WING',
+    categories:['REUSABLE','MALE'],
+    rarity:'COMMON',
+    rarityBg:'#1a1e2a',rarityBorder:'#4a5a6a',rarityColor:'#8a9aaa',
+    threat:35,
+    accentHex:'#6b7280',accentGlow:'rgba(107,114,128,0.25)',
+    cost:'UNDISCLOSED',
+    stats:[
+      {icon:'range', lbl:'RANGE',    val:'1,000 km',  num:'1000'},
+      {icon:'speed', lbl:'SPEED',    val:'225 km/h',  num:'225'},
+      {icon:'alt',   lbl:'ALTITUDE', val:'8,534 m',   num:'8.5'},
+      {icon:'time',  lbl:'ENDURANCE',val:'18 hrs',    num:'18'},
+      {icon:'pay',   lbl:'WINGSPAN', val:'20.6 m',    num:'21'},
+      {icon:'cost',  lbl:'TARGET',   val:'24 hrs ✗',  num:'24'},
+    ],
+    desc:'DRDO\'s MALE drone ambition since 2011 — never quite realized. Failed to meet the 24-hour endurance and 30,000 ft altitude requirements. Formally halted as a mission-mode project in Jan 2024. Excluded from the 87-unit, ₹30,000 crore MALE procurement order. New engine trials continue, but the program is widely considered "end of the road."',
+    svg:`<svg viewBox="0 0 340 220" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="tp" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#a0a8b0"/>
+          <stop offset="100%" stop-color="#3a4048"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="170" cy="200" rx="90" ry="12" fill="rgba(0,0,0,0.45)"/>
+      <!-- wings (slightly shorter than MQ-9B) -->
+      <path d="M155 100 L12  118 L155 128 Z" fill="#4a5058" stroke="#7a8088" stroke-width="1.5" opacity="0.8"/>
+      <path d="M185 100 L328 118 L185 128 Z" fill="#4a5058" stroke="#7a8088" stroke-width="1.5" opacity="0.8"/>
+      <!-- fuselage -->
+      <ellipse cx="170" cy="112" rx="9" ry="76" fill="url(#tp)" opacity="0.85"/>
+      <!-- nose -->
+      <ellipse cx="170" cy="38" rx="9" ry="14" fill="#9a9a9a"/>
+      <!-- twin tail booms -->
+      <path d="M160 170 L148 194 L170 180 L192 194 L180 170 Z" fill="#4a5058" stroke="#7a8088" stroke-width="1" opacity="0.7"/>
+      <!-- engine (rear-mounted) -->
+      <ellipse cx="170" cy="182" rx="9" ry="16" fill="#2a2a2a" stroke="#5a5a5a" stroke-width="1.5" opacity="0.8"/>
+      <ellipse cx="170" cy="184" rx="20" ry="6" fill="none" stroke="rgba(160,170,180,0.3)" stroke-width="2"/>
+      <!-- FAILED X mark overlay -->
+      <g opacity="0.35">
+        <line x1="125" y1="75" x2="215" y2="160" stroke="#ff4444" stroke-width="4" stroke-linecap="round"/>
+        <line x1="215" y1="75" x2="125" y2="160" stroke="#ff4444" stroke-width="4" stroke-linecap="round"/>
+      </g>
+      <!-- "HALTED" text -->
+      <text x="170" y="125" text-anchor="middle" font-family="monospace" font-size="11" fill="rgba(255,80,80,0.4)" letter-spacing="3">HALTED</text>
+    </svg>`,
+    miniSvg:`<svg viewBox="0 0 96 60" xmlns="http://www.w3.org/2000/svg">
+      <path d="M44 28 L2 36 L44 40 Z" fill="#3a3838" opacity="0.8"/>
+      <path d="M52 28 L94 36 L52 40 Z" fill="#3a3838" opacity="0.8"/>
+      <ellipse cx="48" cy="34" rx="6" ry="20" fill="#5a5858" opacity="0.8"/>
+      <line x1="32" y1="24" x2="64" y2="50" stroke="#ff4444" stroke-width="2" opacity="0.6"/>
+      <line x1="64" y1="24" x2="32" y2="50" stroke="#ff4444" stroke-width="2" opacity="0.6"/>
+    </svg>`,
+  },
+];
+
+/* ── IMAGE PATHS ────────────────────────────────────────────────────── */
+const IMGS = {
+  fpv:     'drone-images/fpv.png',
+  shahed:  'drone-images/shahed.jpg',
+  nagastra:'drone-images/nagastra.jpg',
+  switch:  'drone-images/switch.png',
+  mq9b:    'drone-images/mq9b.jpg',
+  vbat:    'drone-images/vbat.jpg',
+  tapas:   'drone-images/tapas.jpg',
+};
+
+/* ── ICONS ──────────────────────────────────────────────────────────── */
+const ICONS = {
+  range:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="3"/><line x1="8" y1="2" x2="8" y2="0"/><line x1="8" y1="14" x2="8" y2="16"/><line x1="2" y1="8" x2="0" y2="8"/><line x1="14" y1="8" x2="16" y2="8"/></svg>`,
+  speed:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10 A7 7 0 0 1 14 10"/><line x1="8" y1="10" x2="12" y2="5"/><circle cx="8" cy="10" r="1.5" fill="currentColor"/></svg>`,
+  alt:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="8,2 8,14"/><polyline points="4,5 8,2 12,5"/><line x1="4" y1="14" x2="12" y2="14"/></svg>`,
+  time:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><polyline points="8,4 8,8 11,10"/></svg>`,
+  pay:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="9" width="10" height="5" rx="1"/><path d="M5 9V6a3 3 0 016 0v3"/></svg>`,
+  cost:`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="8,1 10,6 15,6 11,9.5 12.5,15 8,12 3.5,15 5,9.5 1,6 6,6"/></svg>`,
+};
+
+/* ── STATE ──────────────────────────────────────────────────────────── */
+let currentDrone = DRONES[0];
+let currentCat = 'ALL';
+
+/* ── RENDER ─────────────────────────────────────────────────────────── */
+function setAccent(drone){
+  document.documentElement.style.setProperty('--accent', drone.accentHex);
+  document.documentElement.style.setProperty('--accent-glow', drone.accentGlow);
+  document.getElementById('floorGlow').style.background =
+    `radial-gradient(ellipse,${drone.accentGlow} 0%,transparent 70%)`;
+}
+
+function renderStats(drone){
+  const grid = document.getElementById('statsGrid');
+  grid.innerHTML = drone.stats.map(s=>`
+    <div class="stat-item">
+      <div class="stat-icon" style="color:${drone.accentHex}">${ICONS[s.icon]||ICONS.cost}</div>
+      <div class="stat-info">
+        <span class="stat-lbl">${s.lbl}</span>
+        <span class="stat-val">${s.val}</span>
+      </div>
+      <div class="stat-num-big">${s.num}</div>
+    </div>`).join('');
+}
+
+function renderDrone(drone, animate=true){
+  currentDrone = drone;
+
+  // accent
+  setAccent(drone);
+
+  // Image
+  const wrap = document.getElementById('droneSvgWrap');
+  if(animate){ wrap.classList.add('fade'); }
+  setTimeout(()=>{
+    wrap.innerHTML = `<img class="drone-img" src="${IMGS[drone.id]}" alt="${drone.name}"/>`;
+    if(animate) wrap.classList.remove('fade');
+  }, animate ? 220 : 0);
+
+  // rarity
+  const rt = document.getElementById('rarityTag');
+  rt.style.background = drone.rarityBg;
+  rt.style.borderColor = drone.rarityBorder;
+  rt.style.color = drone.rarityColor;
+  document.getElementById('rarityText').textContent = drone.rarity;
+
+  // class chip
+  document.getElementById('classChip').textContent =
+    drone.categories.join(' / ');
+
+  // name + badges
+  document.getElementById('droneName').textContent = drone.name;
+  document.getElementById('badge1').innerHTML = drone.country;
+  document.getElementById('badge2').textContent = drone.airframe;
+
+  // threat
+  const tn = document.getElementById('threatNum');
+  tn.textContent = drone.threat;
+  tn.style.color = drone.accentHex;
+  tn.style.textShadow = `0 0 10px ${drone.accentGlow}`;
+
+  // stats
+  renderStats(drone);
+
+  // cost
+  document.getElementById('upgradeCost').innerHTML = `◎ &nbsp;${drone.cost}`;
+
+  // desc
+  document.getElementById('descText').textContent = drone.desc;
+
+  // carousel highlight
+  document.querySelectorAll('.drone-card').forEach(c=>{
+    c.classList.toggle('selected', c.dataset.id === drone.id);
+  });
+}
+
+function renderCarousel(cat){
+  const carousel = document.getElementById('carousel');
+  carousel.innerHTML = DRONES.map(d => {
+    const inCat = cat === 'ALL' || d.categories.includes(cat);
+    return `<div class="drone-card ${inCat?'':'dimmed'}" data-id="${d.id}">
+      <img class="card-mini-img" src="${IMGS[d.id]}" alt="${d.name}"/>
+      <span class="card-flag">${d.country.split(' ')[0]}</span>
+      <span class="card-name">${d.name}</span>
+      ${!inCat
+        ? `<button class="buy-btn" style="background:#2a3040;color:#5a6a7a;cursor:default">LOCKED</button>`
+        : `<button class="buy-btn" style="background:${d.id===currentDrone.id?'#2a3040':'#c0252a'};
+             color:${d.id===currentDrone.id?'#8a9aaa':'#fff'}">${d.id===currentDrone.id?'SELECTED':'SELECT'}</button>`}
+    </div>`;
+  }).join('');
+
+  // highlight selected
+  document.querySelectorAll('.drone-card').forEach(c=>{
+    c.classList.toggle('selected', c.dataset.id === currentDrone.id);
+    c.addEventListener('click', ()=>{
+      const drone = DRONES.find(d=>d.id===c.dataset.id);
+      if(drone) renderDrone(drone);
+      renderCarousel(currentCat);
+    });
+  });
+}
+
+/* ── CATEGORY BUTTONS ────────────────────────────────────────────────── */
+document.querySelectorAll('.cat-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentCat = btn.dataset.cat;
+    renderCarousel(currentCat);
+  });
+});
+
+/* ── INIT ────────────────────────────────────────────────────────────── */
+renderDrone(DRONES[0], false);
+renderCarousel('ALL');
+</script>
+</body>
+</html>

@@ -3,7 +3,27 @@
     "allow": [
       "Bash(npm run dev:*)",
       "Bash(curl:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(pnpm remove:*)",
+      "Bash(pnpm add:*)",
+      "WebSearch",
+      "WebFetch(domain:en.wikipedia.org)",
+      "WebFetch(domain:commons.wikimedia.org)",
+      "WebFetch(domain:ideaforgetech.com)",
+      "WebFetch(domain:www.navy.mil)",
+      "WebFetch(domain:www.dvidshub.net)",
+      "WebFetch(domain:airpowerasia.com)",
+      "WebFetch(domain:www.indiatvnews.com)",
+      "WebFetch(domain:us.ideaforgetech.com)",
+      "WebFetch(domain:www.wikidata.org)",
+      "WebFetch(domain:upload.wikimedia.org)",
+      "WebFetch(domain:nara.getarchive.net)",
+      "WebFetch(domain:www.detailedpedia.com)",
+      "WebFetch(domain:dronejungle.org)",
+      "WebFetch(domain:airpra.com)",
+      "WebFetch(domain:en.m.wikipedia.org)",
+      "Bash(python -m json.tool)"
     ]
   }
 }

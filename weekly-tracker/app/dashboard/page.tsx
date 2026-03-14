@@ -156,27 +156,15 @@ export default function Dashboard() {
     try {
       if(!editorInfo.yaas_id) throw new Error("YAAS ID is missing.")
 
-      const { error } = await supabase.from('reports').insert({
-        user_id: user.id,
-        editor_name: editorInfo.name, editor_email: editorInfo.email, yaas_id: editorInfo.yaas_id,
-        submission_date: date, 
-        week_label: labels.weekLabel, month_label: labels.monthLabel,
-        
-        // Ensure we send numbers to DB (convert empty string to 0 or null)
-        hygiene_score: general.hygiene_score === "" ? 0 : Number(general.hygiene_score),
-        mistakes_repeated: general.mistakes_repeated === 'Yes', 
-        mistake_details: general.mistake_details,
-        delays: general.delays === 'Yes', 
-        delay_reasons: general.delay_reasons,
-        general_improvements: general.general_improvements, 
-        next_week_commitment: general.next_week_commitment === "" ? 0 : Number(general.next_week_commitment),
-        areas_improvement: general.areas_improvement, 
-        overall_feedback: general.overall_feedback,
-        
-        ip_data: items
+      const res = await fetch('/api/submit-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ editorInfo, date, labels, general, items }),
       })
 
-      if (error) throw error
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Submission failed')
+
       router.push('/success')
 
     } catch (err: any) {
