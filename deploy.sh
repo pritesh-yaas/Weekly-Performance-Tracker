@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-OFFICE_PAT="YOUR_GITHUB_PAT_HERE"
+OFFICE_PAT="${OFFICE_PAT:?Set OFFICE_PAT env var before running}"
 REPO="pritesh-yaas/Weekly-Performance-Tracker"
 FILE="deploy-trigger.txt"
 
